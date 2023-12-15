@@ -1,7 +1,7 @@
 # This is the main file that is compiled to generate the executable for the compiler.
 
 module Build
-  VERSION      = "2.0.0"
+  VERSION      = "2.0.1"
   LLVM_VERSION = "12.0.1"
   TARGET       = "x86_64-linux-gnu"
   PATH         = "/usr/lib/crystal"

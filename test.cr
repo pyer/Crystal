@@ -1,5 +1,6 @@
 require "./test/dir"
 require "./test/dir/glob"
+require "./test/env"
 require "./test/system"
 require "./test/system/group"
 require "./test/system/user"
