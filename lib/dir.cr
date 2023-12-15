@@ -1,4 +1,4 @@
-require "crystal/system/dir"
+require "c/dirent"
 
 # Objects of class `Dir` are directory streams representing directories in the underlying file system.
 # They provide a variety of ways to list directories and their contents.
@@ -10,6 +10,26 @@ require "crystal/system/dir"
 class Dir
   include Enumerable(String)
   include Iterable(String)
+
+  # :nodoc:
+  #
+  # Information about a directory entry.
+  #
+  # In particular we only care about the name, whether it's a directory, and
+  # whether any hidden file attributes are set to improve the performance of
+  # `Dir.glob` by not having to call `File.info` on every directory entry.
+  # If dir is nil, the type is unknown.
+  # In the future we might change Dir's API to expose these entries
+  # with more info but right now it's not necessary.
+  struct Entry
+    getter name : String
+    getter? dir : Bool?
+    getter? native_hidden : Bool
+    getter? os_hidden : Bool
+
+    def initialize(@name, @dir, @native_hidden, @os_hidden = false)
+    end
+  end
 
   # Returns the path of this directory.
   #
@@ -27,7 +47,8 @@ class Dir
   # Returns a new directory object for the named directory.
   def initialize(path : Path | String)
     @path = path.to_s
-    @dir = Crystal::System::Dir.open(@path)
+    @dir = LibC.opendir(@path.check_no_null_byte)
+    raise ::File::Error.from_errno("Error opening directory", file: @path) unless @dir
     @closed = false
   end
 
@@ -155,24 +176,54 @@ class Dir
   # array.sort # => [".", "..", "config.h"]
   # ```
   def read : String?
-    Crystal::System::Dir.next(@dir, path)
+#    Crystal::System::Dir.next(@dir, path)
+    Dir.next_entry(@dir, path).try &.name
+  end
+
+  def self.next_entry(dir, path) : Entry?
+    # LibC.readdir returns NULL and sets errno for failure or returns NULL for EOF but leaves errno as is.
+    # This means we need to reset `Errno` before calling `readdir`.
+    Errno.value = Errno::NONE
+    if entry = LibC.readdir(dir)
+      name = String.new(entry.value.d_name.to_unsafe)
+
+      dir = case entry.value.d_type
+            when LibC::DT_DIR                   then true
+            when LibC::DT_UNKNOWN, LibC::DT_LNK then nil
+            else                                     false
+            end
+
+      # TODO: support `st_flags & UF_HIDDEN` on BSD-like systems: https://man.freebsd.org/cgi/man.cgi?query=stat&sektion=2
+      # TODO: support hidden file attributes on macOS / HFS+: https://stackoverflow.com/a/15236292
+      # (are these the same?)
+      Entry.new(name, dir, false)
+    elsif Errno.value != Errno::NONE
+      raise ::File::Error.from_errno("Error reading directory entries", file: path)
+    else
+      nil
+    end
   end
 
   # Repositions this directory to the first entry.
   def rewind : self
-    Crystal::System::Dir.rewind(@dir)
+    #Crystal::System::Dir.rewind(@dir)
+    LibC.rewinddir(@dir)
     self
   end
 
   # This method is faster than `.info` and avoids race conditions if a `Dir` is already open on POSIX systems, but not necessarily on windows.
   def info : File::Info
-    Crystal::System::Dir.info(@dir, path)
+    #Crystal::System::Dir.info(@dir, path)
+    Crystal::System::FileDescriptor.system_info LibC.dirfd(@dir)
   end
 
   # Closes the directory stream.
   def close : Nil
     return if @closed
-    Crystal::System::Dir.close(@dir, path)
+    #Crystal::System::Dir.close(@dir, path)
+    if LibC.closedir(@dir) != 0
+      raise ::File::Error.from_errno("Error closing directory", file: path)
+    end
     @closed = true
   end
 
@@ -183,12 +234,33 @@ class Dir
   # On POSIX systems, it respects the environment value `$PWD` if available and
   # if it points to the current working directory.
   def self.current : String
-    Crystal::System::Dir.current
+    #Crystal::System::Dir.current
+    # If $PWD is set and it matches the current path, use that.
+    # This helps telling apart symlinked paths.
+    if (pwd = ENV["PWD"]?) && pwd.starts_with?("/") &&
+       (pwd_info = ::Crystal::System::File.info?(pwd, follow_symlinks: true)) &&
+       (dot_info = ::Crystal::System::File.info?(".", follow_symlinks: true)) &&
+       pwd_info.same_file?(dot_info)
+      return pwd
+    end
+
+    unless dir = LibC.getcwd(nil, 0)
+      raise ::File::Error.from_errno("Error getting current directory", file: "./")
+    end
+
+    dir_str = String.new(dir)
+    LibC.free(dir.as(Void*))
+    dir_str
   end
 
   # Changes the current working directory of the process to the given string.
   def self.cd(path : Path | String) : String
-    Crystal::System::Dir.current = path.to_s
+    #Crystal::System::Dir.current = path.to_s
+    p = path.to_s
+    if LibC.chdir(p.check_no_null_byte) != 0
+      raise ::File::Error.from_errno("Error while changing directory", file: p.to_s)
+    end
+    p
   end
 
   # Changes the current working directory of the process to the given string
@@ -210,7 +282,9 @@ class Dir
   # Dir.tempdir # => "/tmp"
   # ```
   def self.tempdir : String
-    Crystal::System::Dir.tempdir
+    #Crystal::System::Dir.tempdir
+    tmpdir = ENV["TMPDIR"]? || "/tmp"
+    tmpdir.rchop(::File::SEPARATOR)
   end
 
   # See `#each`.
@@ -285,7 +359,11 @@ class Dir
   # Dir.exists?("testdir") # => true
   # ```
   def self.mkdir(path : Path | String, mode = 0o777) : Nil
-    Crystal::System::Dir.create(path.to_s, mode)
+    #Crystal::System::Dir.create(path.to_s, mode)
+    p = path.to_s
+    if LibC.mkdir(p.check_no_null_byte, mode) == -1
+      raise ::File::Error.from_errno("Unable to create directory", file: p)
+    end
   end
 
   # Creates a new directory at the given path, including any non-existing
@@ -308,7 +386,23 @@ class Dir
   # is a reparse point, such as a symbolic link. Those directories can be
   # deleted using `File.delete` instead.
   def self.delete(path : Path | String) : Nil
-    Crystal::System::Dir.delete(path.to_s, raise_on_missing: true)
+    #Crystal::System::Dir.delete(path.to_s, raise_on_missing: true)
+    p = path.to_s
+    if LibC.rmdir(p.check_no_null_byte) == 0
+      true
+    else
+      raise ::File::Error.from_errno("Unable to remove directory", file: p)
+    end
+  end
+
+  def self.delete(path : String, *, raise_on_missing : Bool) : Bool
+    return true if LibC.rmdir(path.check_no_null_byte) == 0
+
+    if !raise_on_missing && Errno.value == Errno::ENOENT
+      false
+    else
+      raise ::File::Error.from_errno("Unable to remove directory", file: path)
+    end
   end
 
   # Removes the directory at *path*, or returns `false` if the directory does
@@ -318,7 +412,9 @@ class Dir
   # is a reparse point, such as a symbolic link. Those directories can be
   # deleted using `File.delete?` instead.
   def self.delete?(path : Path | String) : Bool
-    Crystal::System::Dir.delete(path.to_s, raise_on_missing: false)
+    #Crystal::System::Dir.delete(path.to_s, raise_on_missing: false)
+    p = path.to_s
+    return LibC.rmdir(p.check_no_null_byte) == 0
   end
 
   def to_s(io : IO) : Nil
@@ -360,4 +456,5 @@ class Dir
   end
 end
 
-require "./dir/*"
+require "./dir/glob"
+

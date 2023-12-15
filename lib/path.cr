@@ -1,4 +1,4 @@
-require "crystal/system/path"
+require "system/user"
 
 # A `Path` represents a filesystem path and allows path-handling operations
 # such as querying its components as well as semantic manipulations.
@@ -1361,6 +1361,6 @@ struct Path
 
   # Returns the path of the home directory of the current user.
   def self.home : Path
-    new(Crystal::System::Path.home)
+    new(System::User.home)
   end
 end

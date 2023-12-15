@@ -13,6 +13,8 @@ require "./build/**"
 source_filenames = [] of String
 output_filename  = ""
 
+quiet = false;
+
     # Create compiler
     compiler = Crystal::Compiler.new
     compiler.progress_tracker = Crystal::ProgressTracker.new
@@ -59,6 +61,9 @@ output_filename  = ""
       opts.on("-p", "--progress", "Enable progress output") do
         compiler.progress_tracker.progress = true
       end
+      opts.on("-q", "--quiet", "Compile in quiet mode") do
+        quiet = true
+      end
       opts.on("-r", "--release", "Compile in release mode") do
         compiler.release = true
       end
@@ -74,13 +79,15 @@ output_filename  = ""
       end
     end
 
-# Show environment
-puts "Version #{Build::VERSION} (#{Build::BUILD_DATE})"
-puts "LLVM    #{Build::LLVM_VERSION}"
-puts "Target  #{Build::TARGET}"
-puts "Flags   #{compiler.flags.to_s}"
-puts "Paths   #{compiler.paths.to_s}"
-puts ""
+unless quiet
+  # Show environment
+  puts "Version #{Build::VERSION} (#{Build::BUILD_DATE})"
+  puts "LLVM    #{Build::LLVM_VERSION}"
+  puts "Target  #{Build::TARGET}"
+  puts "Flags   #{compiler.flags.to_s}"
+  puts "Paths   #{compiler.paths.to_s}"
+  puts ""
+end
 
 # Check arguments
 Crystal.error "Source file absent" if source_filenames.size == 0
@@ -100,8 +107,7 @@ source_filenames.each do |filename|
     Crystal.error "Compilation will overwrite source file '#{source_name}'" if source_name == File.expand_path(output_filename)
 
     # Let's go
-    puts "Compiling #{source_name} to #{output_filename}"
+    puts "Compiling #{source_name} to #{output_filename}" unless quiet
     compiler.compile source, output_filename
-    puts "Done #{output_filename}" 
 end
-puts "Elapsed time : #{compiler.progress_tracker.elapsed_time}"
+puts "Elapsed time : #{compiler.progress_tracker.elapsed_time}" unless quiet

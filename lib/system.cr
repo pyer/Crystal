@@ -1,4 +1,4 @@
-require "crystal/system"
+require "c/unistd"
 
 module System
   # Returns the hostname.
@@ -11,7 +11,13 @@ module System
   # System.hostname # => "host.example.org"
   # ```
   def self.hostname : String
-    Crystal::System.hostname
+    String.new(255) do |buffer|
+      unless LibC.gethostname(buffer, LibC::SizeT.new(255)) == 0
+        raise RuntimeError.from_errno("Could not get hostname")
+      end
+      len = LibC.strlen(buffer)
+      {len, len}
+    end
   end
 
   # Returns the number of logical processors available to the system.
@@ -20,6 +26,24 @@ module System
   # System.cpu_count # => 4
   # ```
   def self.cpu_count : Int
-    Crystal::System.cpu_count
+    LibC.sysconf(LibC::SC_NPROCESSORS_ONLN)
+  end
+
+# :nodoc:
+  def self.retry_with_buffer(function_name, max_buffer, &)
+    initial_buf = uninitialized UInt8[1024]
+    buf = initial_buf
+
+    while (ret = yield buf.to_slice) != 0
+      case ret
+      when LibC::ENOENT, LibC::ESRCH, LibC::EBADF, LibC::EPERM
+        return nil
+      when LibC::ERANGE
+        raise RuntimeError.from_errno(function_name) if buf.size >= max_buffer
+        buf = Bytes.new(buf.size * 2)
+      else
+        raise RuntimeError.from_errno(function_name)
+      end
+    end
   end
 end

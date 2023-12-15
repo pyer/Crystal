@@ -1,4 +1,4 @@
-require "crystal/system/user"
+require "c/pwd"
 
 # Represents a user on the host system.
 #
@@ -13,11 +13,11 @@ require "crystal/system/user"
 # System::User.find_by id: "0"
 # ```
 class System::User
+  GETPW_R_SIZE_MAX = 1024 * 16
+
   # Raised on user lookup failure.
   class NotFoundError < Exception
   end
-
-  extend Crystal::System::User
 
   # The user's username.
   getter username : String
@@ -45,6 +45,30 @@ class System::User
   private def initialize(@username, @id, @group_id, @name, @home_directory, @shell)
   end
 
+  # Returns the home directory of the current user
+  #
+  # Raises `RuntimeError` if the directory does not exist.
+  def self.home : String
+    if home_path = ENV["HOME"]?.presence
+      home_path
+    else
+      id = LibC.getuid
+
+      pwd = uninitialized LibC::Passwd
+      pwd_pointer = pointerof(pwd)
+      ret = nil
+      System.retry_with_buffer("getpwuid_r", User::GETPW_R_SIZE_MAX) do |buf|
+        ret = LibC.getpwuid_r(id, pwd_pointer, buf, buf.size, pointerof(pwd_pointer))
+      end
+
+      if pwd_pointer
+        String.new(pwd.pw_dir)
+      else
+        raise RuntimeError.from_os_error("getpwuid_r", Errno.new(ret.not_nil!))
+      end
+    end
+  end
+
   # Returns the user associated with the given username.
   #
   # Raises `NotFoundError` if no such user exists.
@@ -56,7 +80,13 @@ class System::User
   #
   # Returns `nil` if no such user exists.
   def self.find_by?(*, name : String) : System::User?
-    from_username?(name)
+    name.check_no_null_byte
+    pwd = uninitialized LibC::Passwd
+    pwd_pointer = pointerof(pwd)
+    System.retry_with_buffer("getpwnam_r", GETPW_R_SIZE_MAX) do |buf|
+      LibC.getpwnam_r(name, pwd_pointer, buf, buf.size, pointerof(pwd_pointer))
+    end
+    from_struct(pwd) if pwd_pointer
   end
 
   # Returns the user associated with the given ID.
@@ -70,10 +100,27 @@ class System::User
   #
   # Returns `nil` if no such user exists.
   def self.find_by?(*, id : String) : System::User?
-    from_id?(id)
+    id = id.to_u32?
+    return unless id
+
+    pwd = uninitialized LibC::Passwd
+    pwd_pointer = pointerof(pwd)
+    System.retry_with_buffer("getpwuid_r", GETPW_R_SIZE_MAX) do |buf|
+      LibC.getpwuid_r(id, pwd_pointer, buf, buf.size, pointerof(pwd_pointer))
+    end
+
+    from_struct(pwd) if pwd_pointer
   end
 
   def to_s(io)
     io << username << " (" << id << ')'
   end
+
+  private def self.from_struct(pwd)
+    username = String.new(pwd.pw_name)
+    # `pw_gecos` is not part of POSIX and bionic for example always leaves it null
+    user = pwd.pw_gecos ? String.new(pwd.pw_gecos).partition(',')[0] : username
+    new(username, pwd.pw_uid.to_s, pwd.pw_gid.to_s, user, String.new(pwd.pw_dir), String.new(pwd.pw_shell))
+  end
+
 end

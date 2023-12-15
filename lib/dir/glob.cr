@@ -242,7 +242,7 @@ class Dir
     private def self.run(sequence, match, follow_symlinks, &block : String -> _)
       return if sequence.empty?
 
-      path_stack = [] of Tuple(Int32, String?, Crystal::System::Dir::Entry?)
+      path_stack = [] of Tuple(Int32, String?, Dir::Entry?)
       path_stack << {sequence.size - 1, nil, nil}
 
       while !path_stack.empty?
@@ -409,7 +409,7 @@ class Dir
       # By doing this we get an Entry struct which already tells us
       # whether something is a directory or not, avoiding having to
       # call File.info? which is really expensive.
-      Crystal::System::Dir.next_entry(dir.@dir, dir.path)
+      Dir.next_entry(dir.@dir, dir.path)
     end
 
     private def self.matches_file?(entry, match)
