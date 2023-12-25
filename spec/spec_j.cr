@@ -1,0 +1,7 @@
+require "./lib/json/any_spec"
+require "./lib/json/builder_spec"
+require "./lib/json/lexer_spec"
+require "./lib/json/parser_spec"
+require "./lib/json/pull_parser_spec"
+require "./lib/json/serializable_spec"
+require "./lib/json/serialization_spec"

@@ -1,0 +1,7 @@
+require "./lib/math_spec"
+require "./lib/mime/media_type_spec"
+require "./lib/mime/multipart/builder_spec"
+require "./lib/mime/multipart/parser_spec"
+require "./lib/mime/multipart_spec"
+require "./lib/mime_spec"
+require "./lib/mutex_spec"

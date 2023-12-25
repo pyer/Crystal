@@ -1,0 +1,8 @@
+#require "./lib/ecr/ecr_lexer_spec"
+#require "./lib/ecr/ecr_spec"
+require "./lib/enumerable_spec"
+require "./lib/enum_spec"
+require "./lib/env_spec"
+require "./lib/errno_spec"
+#require "./lib/exception/call_stack_spec"
+#require "./lib/exception_spec"

@@ -41,12 +41,23 @@ CXXFLAGS += $(if $(debug),-g -O0)
 all: build
 #	install -m 644 man/crystal.1.gz "/usr/share/man/man1/crystal.1.gz"
 
+.PHONY: spec
+spec:
+	@for file in spec/spec_*.cr ; do \
+    echo "" ; \
+    echo "Compiling $${file}" ; \
+    build -q -o cache/ts $${file} ; \
+    echo "Running:" ; \
+    ./cache/ts ; \
+	  rm -f cache/ts ; \
+  done
+
 .PHONY: test
 test:
 	@echo "Compiling ..."
-	@build -q -o tu test.cr  
-	@./tu
-	@rm -f tu
+	@build -q -o cache/tu test/test.cr
+	@./cache/tu
+	@rm -f cache/tu
 
 .PHONY: build
 build: $(LLVM_EXT_OBJ) ## Build the compiler

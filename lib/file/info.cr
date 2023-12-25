@@ -1,5 +1,3 @@
-require "crystal/system/file_info"
-
 class File
   # Represents the various behaviour-altering flags which can be set on files.
   # Not all flags will be supported on all platforms.
@@ -80,41 +78,63 @@ class File
   # A `File::Info` contains metadata regarding a file.
   # It is returned by `File.info`, `File#info` and `File.info?`.
   struct Info
-    include Crystal::System::FileInfo
+    def initialize(@stat : LibC::Stat)
+    end
 
     # Size of the file, in bytes.
     def size : Int64
-      system_size
+      @stat.st_size.to_i64
     end
 
     # The permissions of the file.
     def permissions : Permissions
-      system_permissions
+      Permissions.new((@stat.st_mode & 0o777).to_i16)
     end
 
     # The type of the file.
     def type : Type
-      system_type
+      case @stat.st_mode & LibC::S_IFMT
+      when LibC::S_IFBLK
+        Type::BlockDevice
+      when LibC::S_IFCHR
+        Type::CharacterDevice
+      when LibC::S_IFDIR
+        Type::Directory
+      when LibC::S_IFIFO
+        Type::Pipe
+      when LibC::S_IFLNK
+        Type::Symlink
+      when LibC::S_IFREG
+        Type::File
+      when LibC::S_IFSOCK
+        Type::Socket
+      else
+        Type::Unknown
+      end
     end
 
     # The special flags this file has set.
     def flags : Flags
-      system_flags
+      flags = Flags::None
+      flags |= Flags::SetUser if @stat.st_mode.bits_set? LibC::S_ISUID
+      flags |= Flags::SetGroup if @stat.st_mode.bits_set? LibC::S_ISGID
+      flags |= Flags::Sticky if @stat.st_mode.bits_set? LibC::S_ISVTX
+      flags
     end
 
     # The last time this file was modified.
     def modification_time : Time
-      system_modification_time
+      Time.new(@stat.st_mtim, Time::Location::UTC)
     end
 
     # The user ID that the file belongs to.
     def owner_id : String
-      system_owner_id
+      @stat.st_uid.to_s
     end
 
     # The group ID that the file belongs to.
     def group_id : String
-      system_group_id
+      @stat.st_gid.to_s
     end
 
     # Returns true if this `Info` and *other* are of the same file.
@@ -122,7 +142,7 @@ class File
     # On Unix-like systems, this compares device and inode fields, and will
     # compare equal for hard linked files.
     def same_file?(other : self) : Bool
-      system_same_file?(other)
+      @stat.st_dev == other.@stat.st_dev && @stat.st_ino == other.@stat.st_ino
     end
 
     # Returns true if this `Info` represents a standard file. Shortcut for
@@ -144,3 +164,4 @@ class File
     end
   end
 end
+

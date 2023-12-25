@@ -91,6 +91,10 @@ class StringScanner
   # s.scan(/\s\w+/) # => " string"
   # s.scan(/.*/)    # => ""
   # ```
+  def scan(s : String | Char, options : Regex::MatchOptions = Regex::MatchOptions::None) : String?
+    pattern = Regex.new(s.to_s)
+    match(pattern, advance: true, options: options | Regex::MatchOptions::ANCHORED)
+  end
   def scan(pattern : Regex, *, options : Regex::MatchOptions = Regex::MatchOptions::None) : String?
     match(pattern, advance: true, options: options | Regex::MatchOptions::ANCHORED)
   end
@@ -107,6 +111,10 @@ class StringScanner
   # s.scan_until(/tr/) # => nil
   # s.scan_until(/g/)  # => "ing"
   # ```
+  def scan_until(s : String | Char, *, options : Regex::MatchOptions = Regex::MatchOptions::None) : String?
+    pattern = Regex.new(s.to_s)
+    match(pattern, advance: true, options: options)
+  end
   def scan_until(pattern : Regex, *, options : Regex::MatchOptions = Regex::MatchOptions::None) : String?
     match(pattern, advance: true, options: options)
   end
@@ -134,6 +142,11 @@ class StringScanner
   #
   # This method is the same as `#scan`, but without returning the matched
   # string.
+  def skip(s : String | Char, *, options : Regex::MatchOptions = Regex::MatchOptions::None) : Int32?
+    pattern = Regex.new(s.to_s)
+    match = scan(pattern, options: options)
+    match.size if match
+  end
   def skip(pattern : Regex, *, options : Regex::MatchOptions = Regex::MatchOptions::None) : Int32?
     match = scan(pattern, options: options)
     match.size if match
@@ -150,6 +163,11 @@ class StringScanner
   #
   # This method is the same as `#scan_until`, but without returning the matched
   # string.
+  def skip_until(s : String | Char, *, options : Regex::MatchOptions = Regex::MatchOptions::None) : Int32?
+    pattern = Regex.new(s.to_s)
+    match = scan_until(pattern, options: options)
+    match.size if match
+  end
   def skip_until(pattern : Regex, *, options : Regex::MatchOptions = Regex::MatchOptions::None) : Int32?
     match = scan_until(pattern, options: options)
     match.size if match
@@ -166,6 +184,10 @@ class StringScanner
   # s.check(/\w+/) # => "is"
   # s.check(/\w+/) # => "is"
   # ```
+  def check(s : String | Char, *, options : Regex::MatchOptions = Regex::MatchOptions::None) : String?
+    pattern = Regex.new(s.to_s)
+    match(pattern, advance: false, options: options | Regex::MatchOptions::ANCHORED)
+  end
   def check(pattern : Regex, *, options : Regex::MatchOptions = Regex::MatchOptions::None) : String?
     match(pattern, advance: false, options: options | Regex::MatchOptions::ANCHORED)
   end
@@ -180,6 +202,10 @@ class StringScanner
   # s.check_until(/tr/) # => "test str"
   # s.check_until(/g/)  # => "test string"
   # ```
+  def check_until(s : String | Char, *, options : Regex::MatchOptions = Regex::MatchOptions::None) : String?
+    pattern = Regex.new(s.to_s)
+    match(pattern, advance: false, options: options)
+  end
   def check_until(pattern : Regex, *, options : Regex::MatchOptions = Regex::MatchOptions::None) : String?
     match(pattern, advance: false, options: options)
   end
