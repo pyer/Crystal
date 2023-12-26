@@ -1,6 +1,6 @@
 require "test"
 
-class SystemTest < Minitest::Test
+class SystemTest < Test
 
   def test_cpu_count
     shell_cpus = `grep -sc '^processor' /proc/cpuinfo`.to_i

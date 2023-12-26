@@ -54,7 +54,7 @@ spec:
 
 .PHONY: test
 test:
-	@echo "Compiling ..."
+	@echo "Build"
 	@build -q -o cache/tu test/test.cr
 	@./cache/tu
 	@rm -f cache/tu

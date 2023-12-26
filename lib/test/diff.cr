@@ -2,7 +2,7 @@
 # under the MIT license.
 #
 # See <https://github.com/makenowjust/crystal-diff/blob/master/src/diff.cr>
-struct Minitest::Diff(T)
+struct Mtest::Diff(T)
   enum Type
     DELETED
     APPENDED

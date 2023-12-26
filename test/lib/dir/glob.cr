@@ -1,6 +1,6 @@
 require "test"
 
-class DirGlobTest < Minitest::Test
+class DirGlobTest < Test
 
   private def datapath(*components)
     File.join("test", "data", *components)

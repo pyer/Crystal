@@ -1,6 +1,6 @@
 require "test"
 
-class EnvTest < Minitest::Test
+class EnvTest < Test
 
   def test_non_existent_env
     assert_raises(KeyError) do

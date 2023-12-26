@@ -1,6 +1,6 @@
 require "test"
 
-class DirTest < Minitest::Test
+class DirTest < Test
 
   def setup
     Dir.mkdir(tmp_path, 0o700)

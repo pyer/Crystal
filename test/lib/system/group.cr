@@ -1,7 +1,7 @@
 require "test"
 require "system/group"
 
-class SystemGroupTest < Minitest::Test
+class SystemGroupTest < Test
 
   GROUP_NAME         = {{ `id -gn`.stringify.chomp }}
   GROUP_ID           = {{ `id -g`.stringify.chomp }}

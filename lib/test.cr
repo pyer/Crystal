@@ -4,10 +4,8 @@ require "test/reporter"
 require "test/result"
 require "test/runnable"
 
-module Minitest
-
-  class Test < Runnable
-    include Assertions
+class Test < Mtest::Runnable
+    include Mtest::Assertions
 
     def setup
     end
@@ -15,57 +13,48 @@ module Minitest
     def teardown
     end
 
-    def run_one(name : String, proc : Test ->) : Nil
-      result = Result.new(self.class.name, name)
+    def run_one(name : String, reporter : Mtest::Reporter, proc : Test ->) : Nil
+      result = Mtest::Result.new(self.class.name, name)
 
       result.time = Time.measure do
         capture_exception(result) do
           setup
           proc.call(self)
         end
-
-        capture_exception(result) { teardown }
+        capture_exception(result) do
+          teardown
+        end
       end
 
-      __reporter.record(result)
+      reporter.record(result)
     end
 
-    def capture_exception(result : Result, &) : Nil
+    def capture_exception(result : Mtest::Result, &) : Nil
       yield
-    rescue ex : Assertion | Skip
+    rescue ex : Mtest::Assertion | Mtest::Skip
       result.failures << ex
     rescue ex : Exception
-      result.failures << UnexpectedError.new(ex)
+      result.failures << Mtest::UnexpectedError.new(ex.message)
     end
 
-    @@failures = [] of Assertion | Skip | UnexpectedError
+end
 
-    def self.failures : Array(Assertion, Skip, UnexpectedError)
-      @@failures
-    end
-  end
-
-  def self.run : Nil
-    reporter = CompositeReporter.new
-    reporter << ProgressReporter.new
-    reporter << SummaryReporter.new
+def run_test
     seed   = Random.rand(0_u32..0xFFFF_u32)
     random = Random::PCG32.new(seed.to_u64)
+    reporter = Mtest::Reporter.new
 
-    reporter.start
     # shuffle each suite, then shuffle tests for each suite:
-    Runnable.runnables.shuffle!(random).each do |suite|
+    Mtest::Runnable.runnables.shuffle!(random).each do |suite|
         suite
           .collect_tests
           .shuffle!(random)
           .each { |test|
             suite, name, proc = test
-            suite.new(reporter).run_one(name, proc)
+            suite.new().run_one(name, reporter, proc)
           }
     end
     reporter.report
-  end
 end
 
-Minitest.run
-
+run_test

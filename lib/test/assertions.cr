@@ -4,57 +4,15 @@ lib LibC
   fun dup(Int) : Int
 end
 
-class Exception
-  getter __minitest_file : String?
-  getter __minitest_line : Int32?
-
-  def initialize(@message : String? = nil, @cause : Exception? = nil, @__minitest_file = __FILE__, @__minitest_line = __LINE__)
-    # NOTE: hack to report the source location that raised
-  end
-
-  def __minitest_location : String
-    "#{__minitest_file}:#{__minitest_line}"
-  end
-end
-
-module Minitest
-  module LocationFilter
-    def __minitest_file : String
-      file, cwd = @__minitest_file.to_s, Dir.current
-      file.starts_with?(cwd) ? file[(cwd.size + 1)..-1] : file
-    end
-  end
-
+module Mtest
   # Decorator for the original exception.
   class UnexpectedError < Exception
-    include LocationFilter
-
-    getter exception : Exception
-
-    def initialize(@exception)
-      super "#{exception.class.name}: #{exception.message}"
-      @__minitest_file = exception.__minitest_file
-    end
-
-    def backtrace : Array(String)
-      if pos = exception.backtrace.index(&.index("@Minitest::Test#run_tests"))
-        exception.backtrace[0...pos]
-      else
-        exception.backtrace
-      end
-    end
-
-    def __minitest_location : String
-      "#{__minitest_file}:#{exception.__minitest_line}"
-    end
   end
 
   class Assertion < Exception
-    include LocationFilter
   end
 
   class Skip < Exception
-    include LocationFilter
   end
 
   module Assertions
@@ -84,7 +42,7 @@ module Minitest
       diff(left, right)
     end
 
-    def assert(actual, message = nil, file = __FILE__, line = __LINE__) : Bool
+    def assert(actual, message = nil) : Bool
       return true if actual
 
       msg =
@@ -97,22 +55,22 @@ module Minitest
           "failed assertion"
         end
 
-      raise Minitest::Assertion.new(msg, __minitest_file: file, __minitest_line: line)
+      raise Mtest::Assertion.new(msg)
     end
 
-    def assert(message = nil, file = __FILE__, line = __LINE__, &) : Bool
-      assert yield, message, file, line
+    def assert(message = nil, &) : Bool
+      assert yield, message
     end
 
-    def refute(actual, message = nil, file = __FILE__, line = __LINE__) : Bool
-      assert !actual, message || "failed refutation", file, line
+    def refute(actual, message = nil) : Bool
+      assert !actual, message || "failed refutation"
     end
 
-    def refute(message = nil, file = __FILE__, line = __LINE__, &) : Bool
-      refute yield, message, file, line
+    def refute(message = nil, &) : Bool
+      refute yield, message
     end
 
-    def assert_equal(expected, actual, message = nil, file = __FILE__, line = __LINE__) : Bool
+    def assert_equal(expected, actual, message = nil) : Bool
       msg = self.message(message) do
         if need_diff?(expected, actual)
           result = diff(expected, actual)
@@ -125,178 +83,178 @@ module Minitest
           "Expected #{expected.inspect} but got #{actual.inspect}"
         end
       end
-      assert expected == actual, msg, file, line
+      assert expected == actual, msg
     end
 
-    def refute_equal(expected, actual, message = nil, file = __FILE__, line = __LINE__) : Bool
+    def refute_equal(expected, actual, message = nil) : Bool
       msg = self.message(message) { "Expected #{expected.inspect} to not be equal to #{actual.inspect}" }
-      assert expected != actual, msg, file, line
+      assert expected != actual, msg
     end
 
-    def assert_same(expected, actual, message = nil, file = __FILE__, line = __LINE__) : Bool
+    def assert_same(expected, actual, message = nil) : Bool
       msg = self.message(message) {
         "Expected #{actual.inspect} (oid=#{actual.object_id}) to be the same as #{expected.inspect} (oid=#{expected.object_id})"
       }
       if expected.responds_to?(:same?)
-        assert expected.same?(actual), msg, file, line
+        assert expected.same?(actual), msg
       else
-        assert_responds_to expected, :same?, nil, file, line
+        assert_responds_to expected, :same?, nil
       end
     end
 
-    def refute_same(expected, actual, message = nil, file = __FILE__, line = __LINE__) : Bool
+    def refute_same(expected, actual, message = nil) : Bool
       msg = self.message(message) {
         "Expected #{actual.inspect} (oid=#{actual.object_id}) to not be the same as #{expected.inspect} (oid=#{expected.object_id})"
       }
       if expected.responds_to?(:same?)
-        refute expected.same?(actual), msg, file, line
+        refute expected.same?(actual), msg
       else
-        assert_responds_to expected, :same?, nil, file, line
+        assert_responds_to expected, :same?, nil
       end
     end
 
-    def assert_match(pattern : Regex, actual, message = nil, file = __FILE__, line = __LINE__) : Bool
+    def assert_match(pattern : Regex, actual, message = nil) : Bool
       msg = self.message(message) { "Expected #{pattern.inspect} to match: #{actual.inspect}" }
-      assert actual =~ pattern, msg, file, line
+      assert actual =~ pattern, msg
     end
 
-    def assert_match(pattern, actual, message = nil, file = __FILE__, line = __LINE__) : Bool
+    def assert_match(pattern, actual, message = nil) : Bool
       msg = self.message(message) { "Expected #{pattern.inspect} to match #{actual.inspect}" }
-      assert actual =~ Regex.new(Regex.escape(pattern.to_s)), msg, file, line
+      assert actual =~ Regex.new(Regex.escape(pattern.to_s)), msg
     end
 
-    def refute_match(pattern : Regex, actual, message = nil, file = __FILE__, line = __LINE__) : Bool
+    def refute_match(pattern : Regex, actual, message = nil) : Bool
       msg = self.message(message) { "Expected #{pattern.inspect} to not match #{actual.inspect}" }
-      refute actual =~ pattern, msg, file, line
+      refute actual =~ pattern, msg
     end
 
-    def refute_match(pattern, actual, message = nil, file = __FILE__, line = __LINE__) : Bool
+    def refute_match(pattern, actual, message = nil) : Bool
       msg = self.message(message) { "Expected #{pattern.inspect} to not match #{actual.inspect}" }
-      refute actual =~ Regex.new(Regex.escape(pattern.to_s)), msg, file, line
+      refute actual =~ Regex.new(Regex.escape(pattern.to_s)), msg
     end
 
-    def assert_empty(actual, message = nil, file = __FILE__, line = __LINE__) : Bool
+    def assert_empty(actual, message = nil) : Bool
       if actual.responds_to?(:empty?)
         msg = self.message(message) { "Expected #{actual.inspect} to be empty" }
-        assert actual.empty?, msg, file, line
+        assert actual.empty?, msg
       else
         assert_responds_to actual, :empty?
       end
     end
 
-    def refute_empty(actual, message = nil, file = __FILE__, line = __LINE__) : Bool
+    def refute_empty(actual, message = nil) : Bool
       if actual.responds_to?(:empty?)
         msg = self.message(message) { "Expected #{actual.inspect} to not be empty" }
-        refute actual.empty?, msg, file, line
+        refute actual.empty?, msg
       else
         assert_responds_to actual, :empty?
       end
     end
 
-    def assert_nil(actual, message = nil, file = __FILE__, line = __LINE__) : Bool
-      assert_equal nil, actual, message, file, line
+    def assert_nil(actual, message = nil) : Bool
+      assert_equal nil, actual, message
     end
 
-    def refute_nil(actual, message = nil, file = __FILE__, line = __LINE__) : Bool
-      refute_equal nil, actual, message, file, line
+    def refute_nil(actual, message = nil) : Bool
+      refute_equal nil, actual, message
     end
 
-    def assert_in_delta(expected : Number, actual : Number, delta : Number = 0.001, message = nil, file = __FILE__, line = __LINE__) : Bool
+    def assert_in_delta(expected : Number, actual : Number, delta : Number = 0.001, message = nil) : Bool
       n = (expected.to_f - actual.to_f).abs
       msg = self.message(message) { "Expected #{expected} - #{actual} (#{n}) to be <= #{delta}" }
-      assert delta >= n, msg, file, line
+      assert delta >= n, msg
     end
 
-    def refute_in_delta(expected : Number, actual : Number, delta : Number = 0.001, message = nil, file = __FILE__, line = __LINE__) : Bool
+    def refute_in_delta(expected : Number, actual : Number, delta : Number = 0.001, message = nil) : Bool
       n = (expected.to_f - actual.to_f).abs
       msg = self.message(message) { "Expected #{expected} - #{actual} (#{n}) to not be <= #{delta}" }
-      refute delta >= n, msg, file, line
+      refute delta >= n, msg
     end
 
-    def assert_in_epsilon(a : Number, b : Number, epsilon : Number = 0.001, message = nil, file = __FILE__, line = __LINE__) : Bool
+    def assert_in_epsilon(a : Number, b : Number, epsilon : Number = 0.001, message = nil) : Bool
       delta = [a.to_f.abs, b.to_f.abs].min * epsilon
-      assert_in_delta a, b, delta, message, file, line
+      assert_in_delta a, b, delta, message
     end
 
-    def refute_in_epsilon(a : Number, b : Number, epsilon : Number = 0.001, message = nil, file = __FILE__, line = __LINE__) : Bool
+    def refute_in_epsilon(a : Number, b : Number, epsilon : Number = 0.001, message = nil) : Bool
       delta = a.to_f * epsilon
-      refute_in_delta a, b, delta, message, file, line
+      refute_in_delta a, b, delta, message
     end
 
-    def assert_includes(collection, obj, message = nil, file = __FILE__, line = __LINE__) : Bool
+    def assert_includes(collection, obj, message = nil) : Bool
       msg = self.message(message) { "Expected #{collection.inspect} to include #{obj.inspect}" }
       if collection.responds_to?(:includes?)
-        assert collection.includes?(obj), msg, file, line
+        assert collection.includes?(obj), msg
       else
         assert_responds_to collection, :includes?
       end
     end
 
-    def refute_includes(collection, obj, message = nil, file = __FILE__, line = __LINE__) : Bool
+    def refute_includes(collection, obj, message = nil) : Bool
       msg = self.message(message) { "Expected #{collection.inspect} to not include #{obj.inspect}" }
       if collection.responds_to?(:includes?)
-        refute collection.includes?(obj), msg, file, line
+        refute collection.includes?(obj), msg
       else
         assert_responds_to collection, :includes?
       end
     end
 
-    def assert_instance_of(cls, obj, message = nil, file = __FILE__, line = __LINE__) : Bool
+    def assert_instance_of(cls, obj, message = nil) : Bool
       msg = self.message(message) do
         "Expected #{obj.inspect} to be an instance of #{cls.name}, not #{obj.class.name}"
       end
-      assert cls === obj, msg, file, line
+      assert cls === obj, msg
     end
 
-    def refute_instance_of(cls, obj, message = nil, file = __FILE__, line = __LINE__) : Bool
+    def refute_instance_of(cls, obj, message = nil) : Bool
       msg = self.message(message) do
         "Expected #{obj.inspect} to not be an instance of #{cls.name}"
       end
-      refute cls === obj, msg, file, line
+      refute cls === obj, msg
     end
 
-    macro assert_responds_to(obj, method, message = nil, file = __FILE__, line = __LINE__)
+    macro assert_responds_to(obj, method, message = nil)
       %msg = self.message({{ message }}) do
         "Expected #{ {{ obj }}.inspect} (#{ {{ obj }}.class.name}) to respond to ##{ {{ method }} }"
       end
-      assert {{ obj }}.responds_to?(:{{ method.id }}), %msg, {{ file }}, {{ line }}
+      assert {{ obj }}.responds_to?(:{{ method.id }}), %msg
     end
 
-    macro refute_responds_to(obj, method, message = nil, file = __FILE__, line = __LINE__)
+    macro refute_responds_to(obj, method, message = nil)
       %msg = self.message({{ message }}) do
         "Expected #{ {{ obj }}.inspect} (#{ {{ obj }}.class.name}) to not respond to ##{ {{ method }} }"
       end
-      refute {{ obj }}.responds_to?(:{{ method.id }}), %msg, {{ file }}, {{ line }}
+      refute {{ obj }}.responds_to?(:{{ method.id }}), %msg
     end
 
-    def assert_raises(message : String? = nil, file = __FILE__, line = __LINE__, &) : Exception
+    def assert_raises(message : String? = nil, &) : Exception
       yield
     rescue ex
       ex
     else
       message ||= "Expected an exception but nothing was raised"
-      raise Assertion.new(message, __minitest_file: file, __minitest_line: line)
+      raise Assertion.new(message)
     end
 
-    def assert_raises(klass : T.class, file = __FILE__, line = __LINE__, &) : T forall T
+    def assert_raises(klass : T.class, &) : T forall T
       yield
     rescue ex : T
       ex
     rescue ex
       message = "Expected #{T.name} but #{ex.class.name} was raised"
-      raise Assertion.new(message, __minitest_file: file, __minitest_line: line)
+      raise Assertion.new(message)
     else
       message = "Expected #{T.name} but nothing was raised"
-      raise Assertion.new(message, __minitest_file: file, __minitest_line: line)
+      raise Assertion.new(message)
     end
 
-    def assert_silent(file = __FILE__, line = __LINE__, &) : Bool
-      assert_output("", "", file, line) do
+    def assert_silent(&) : Bool
+      assert_output("", "") do
         yield
       end
     end
 
-    def assert_output(stdout = nil, stderr = nil, file = __FILE__, line = __LINE__, &) : Bool
+    def assert_output(stdout = nil, stderr = nil, &) : Bool
       output, error = capture_io { yield }
 
       o = stdout.is_a?(Regex) ? assert_match(stdout, output) : assert_equal(stdout, output) if stdout
@@ -306,10 +264,6 @@ module Minitest
     end
 
     def capture_io(& : ->) : {String, String}
-      # prevents a reporter from printing any output from another thread,
-      # also prevents parallel calls to `capture_io`:
-      @__reporter.pause
-
       File.tempfile("out") do |stdout|
         File.tempfile("err") do |stderr|
           reopen(STDOUT, stdout) do
@@ -328,8 +282,6 @@ module Minitest
         stdout.delete
       end
       raise "unreachable"
-    ensure
-      @__reporter.resume
     end
 
     private def reopen(src, dst, & : ->) : Nil
@@ -349,12 +301,12 @@ module Minitest
       end
     end
 
-    def skip(message = "", file = __FILE__, line = __LINE__) : NoReturn
-      raise Minitest::Skip.new(message.to_s, __minitest_file: file, __minitest_line: line)
+    def skip(message = "") : NoReturn
+      raise Mtest::Skip.new(message.to_s)
     end
 
-    def flunk(message = "Epic Fail!", file = __FILE__, line = __LINE__) : NoReturn
-      raise Minitest::Assertion.new(message.to_s, __minitest_file: file, __minitest_line: line)
+    def flunk(message = "Epic Fail!") : NoReturn
+      raise Mtest::Assertion.new(message.to_s)
     end
 
     def message(message : Nil, &block : -> String) : -> String

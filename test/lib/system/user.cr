@@ -1,7 +1,7 @@
 require "test"
 require "system/user"
 
-class SystemUserTest < Minitest::Test
+class SystemUserTest < Test
 
   USER_NAME         = {{ `id -un`.stringify.chomp }}
   USER_ID           = {{ `id -u`.stringify.chomp }}

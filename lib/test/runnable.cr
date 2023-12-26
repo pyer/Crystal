@@ -1,4 +1,4 @@
-module Minitest
+module Mtest
   class Runnable
     def self.runnables : Array(Runnable.class)
       {% begin %}
@@ -26,11 +26,5 @@ module Minitest
 
       tests
     end
-
-    getter __reporter : AbstractReporter
-
-    def initialize(@__reporter)
-    end
-
   end
 end

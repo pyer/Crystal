@@ -1,4 +1,4 @@
-module Minitest
+module Mtest
   class Result
     getter assertions : Int64
     getter class_name : String
