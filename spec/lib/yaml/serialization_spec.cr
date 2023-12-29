@@ -26,7 +26,7 @@ end
 
 alias YamlRec = Int32 | Array(YamlRec) | Hash(YamlRec, YamlRec)
 
-puts YAML.libyaml_version
+puts "YAML version " + YAML.libyaml_version.to_s
 
 # libyaml 0.2.1 removed the erroneously written document end marker (`...`) after some scalars in root context (see https://github.com/yaml/libyaml/pull/18).
 # Earlier libyaml releases still write the document end marker and this is hard to fix on Crystal's side.

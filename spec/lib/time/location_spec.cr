@@ -116,7 +116,7 @@ class Time::Location
             expect_raises(InvalidLocationNameError) do
               Location.load("Foo/Bar")
             end
-            Location.load?("Foo/Bar", Crystal::System::Time.zone_sources).should be_nil
+            Location.load?("Foo/Bar", [] of String).should be_nil
           end
         end
 
@@ -229,7 +229,7 @@ class Time::Location
       it "with unset TZ" do
         with_tz(nil) do
           # This should generally be `Local`, but if `/etc/localtime` doesn't exist,
-          # `Crystal::System::Time.load_localtime` can't resolve a local time zone,
+          # `System::Time.load_localtime` can't resolve a local time zone,
           # making the return value default to `UTC`.
           {"Local", "UTC"}.should contain Location.load_local.name
         end

@@ -168,7 +168,7 @@ describe "select" do
         x = b
       end
     ensure
-      Crystal::Scheduler.enqueue(main)
+      Scheduler.enqueue(main)
     end
 
     sleep

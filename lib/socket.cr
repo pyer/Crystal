@@ -1,8 +1,8 @@
-require "crystal/system/socket"
+require "system/socket"
 
 class Socket < IO
   include IO::Buffered
-  include Crystal::System::Socket
+  include System::Socket
 
   # :nodoc:
   SOMAXCONN = 128
@@ -384,7 +384,7 @@ class Socket < IO
   end
 
   def self.fcntl(fd, cmd, arg = 0)
-    Crystal::System::Socket.fcntl(fd, cmd, arg)
+    System::Socket.fcntl(fd, cmd, arg)
   end
 
   def fcntl(cmd, arg = 0)

@@ -2,8 +2,8 @@ require "spec"
 require "./spec_helper"
 
 private def yield_to(fiber)
-  Crystal::Scheduler.enqueue(Fiber.current)
-  Crystal::Scheduler.resume(fiber)
+  Scheduler.enqueue(Fiber.current)
+  Scheduler.resume(fiber)
 end
 
 private macro parallel(*jobs)
