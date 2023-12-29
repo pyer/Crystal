@@ -9,8 +9,7 @@ describe "ENV" do
   end
 
   it "gets non existent key as nilable" do
-    #ENV["NON-EXISTENT"]?.should be_nil
-    ENV["NON-EXISTENT"].should be_nil
+    ENV["NON-EXISTENT"]?.should be_nil
   end
 
   it "set and gets" do

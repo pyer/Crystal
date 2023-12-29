@@ -13,7 +13,7 @@ module Crystal::AtExitHandlers
         begin
           handler.call status, exception
         rescue handler_ex
-          Crystal::System.print_error "Error running at_exit handler: %s\n", handler_ex.message || ""
+          ::System.print_error "Error running at_exit handler: %s\n", handler_ex.message || ""
           status = 1 if status.zero?
         end
       end

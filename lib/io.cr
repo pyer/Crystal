@@ -1,8 +1,6 @@
 require "c/stdio"
 require "c/errno"
-{% unless flag?(:win32) %}
-  require "c/unistd"
-{% end %}
+require "c/unistd"
 
 # The `IO` class is the basis for all input and output in Crystal.
 #
@@ -138,7 +136,7 @@ abstract class IO
   # reader.gets # => "world"
   # ```
   def self.pipe(read_blocking = false, write_blocking = false) : {IO::FileDescriptor, IO::FileDescriptor}
-    Crystal::System::FileDescriptor.pipe(read_blocking, write_blocking)
+    System::FileDescriptor.pipe(read_blocking, write_blocking)
   end
 
   # Creates a pair of pipe endpoints (connected to each other) and passes them

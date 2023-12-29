@@ -48,6 +48,19 @@ class Time::Location
     end
   end
 
+  private LOCALTIME = "/etc/localtime"
+
+  # Returns the system's current local time zone
+  def self.load_localtime : Time::Location?
+      if ::File.file?(LOCALTIME) && ::File.readable?(LOCALTIME)
+        ::File.open(LOCALTIME) do |file|
+          read_zoneinfo("Local", file)
+        rescue InvalidTZDataError
+          nil
+        end
+      end
+  end
+
   # :nodoc:
   def self.load_from_android_tzdata(name : String, path : String) : Time::Location?
     return nil unless File.exists?(path)

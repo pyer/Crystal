@@ -1,4 +1,4 @@
-require "../../crystal/system/print_error"
+require "../../system/print_error"
 
 # :nodoc:
 struct Exception::CallStack
@@ -27,7 +27,7 @@ struct Exception::CallStack
 
   def self.print_backtrace : Nil
     unwind.each do |frame|
-      Crystal::System.print_error frame.unsafe_as(String)
+      System.print_error frame.unsafe_as(String)
     end
   end
 end

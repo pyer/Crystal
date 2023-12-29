@@ -69,7 +69,7 @@ class Mutex
 
         @queue.push Fiber.current
       end
-      Crystal::Scheduler.reschedule
+      Scheduler.reschedule
     end
 
     @mutex_fiber = Fiber.current

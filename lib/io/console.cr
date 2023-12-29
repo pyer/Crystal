@@ -89,32 +89,4 @@ class IO::FileDescriptor < IO
     system_raw(true) { return }
   end
 
-  @[Deprecated]
-  macro noecho_from_tc_mode!
-    mode.c_lflag &= ~(Termios::LocalMode.flags(ECHO, ECHOE, ECHOK, ECHONL).value)
-    Crystal::System::FileDescriptor.tcsetattr(fd, Termios::LineControl::TCSANOW, pointerof(mode))
-  end
-
-  @[Deprecated]
-  macro cooked_from_tc_mode!
-    mode.c_iflag |= (Termios::InputMode::BRKINT |
-                     Termios::InputMode::ISTRIP |
-                     Termios::InputMode::ICRNL |
-                     Termios::InputMode::IXON).value
-    mode.c_oflag |= Termios::OutputMode::OPOST.value
-    mode.c_lflag |= (Termios::LocalMode::ECHO |
-                     Termios::LocalMode::ECHOE |
-                     Termios::LocalMode::ECHOK |
-                     Termios::LocalMode::ECHONL |
-                     Termios::LocalMode::ICANON |
-                     Termios::LocalMode::ISIG |
-                     Termios::LocalMode::IEXTEN).value
-    Crystal::System::FileDescriptor.tcsetattr(fd, Termios::LineControl::TCSANOW, pointerof(mode))
-  end
-
-  @[Deprecated]
-  macro raw_from_tc_mode!
-    Crystal::System::FileDescriptor.cfmakeraw(pointerof(mode))
-    Crystal::System::FileDescriptor.tcsetattr(fd, Termios::LineControl::TCSANOW, pointerof(mode))
-  end
 end

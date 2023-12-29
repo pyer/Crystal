@@ -1,6 +1,6 @@
 require "./enums"
 
-@[Link("yaml", pkg_config: "yaml-0.1")]
+@[Link("yaml")]
 lib LibYAML
   alias Int = LibC::Int
 

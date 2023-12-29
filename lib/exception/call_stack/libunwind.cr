@@ -33,7 +33,7 @@ struct Exception::CallStack
   {% end %}
 
   def self.setup_crash_handler
-    Crystal::System::Signal.setup_segfault_handler
+    System::Signal.setup_segfault_handler
   end
 
   {% if flag?(:interpreted) %} @[Primitive(:interpreter_call_stack_unwind)] {% end %}
@@ -102,10 +102,10 @@ struct Exception::CallStack
   end
 
   private def self.print_frame(repeated_frame)
-    Crystal::System.print_error "[0x%llx] ", repeated_frame.ip.address.to_u64
+    System.print_error "[0x%llx] ", repeated_frame.ip.address.to_u64
     print_frame_location(repeated_frame)
-    Crystal::System.print_error " (%d times)", repeated_frame.count + 1 unless repeated_frame.count == 0
-    Crystal::System.print_error "\n"
+    System.print_error " (%d times)", repeated_frame.count + 1 unless repeated_frame.count == 0
+    System.print_error "\n"
   end
 
   private def self.print_frame_location(repeated_frame)
@@ -114,7 +114,7 @@ struct Exception::CallStack
          (name = decode_function_name(repeated_frame.ip.address))
         file, line, column = Exception::CallStack.decode_line_number(repeated_frame.ip.address)
         if file && file != "??"
-          Crystal::System.print_error "%s at %s:%d:%d", name, file, line, column
+          System.print_error "%s at %s:%d:%d", name, file, line, column
           return
         end
       end
@@ -122,9 +122,9 @@ struct Exception::CallStack
 
     if frame = decode_frame(repeated_frame.ip)
       offset, sname, fname = frame
-      Crystal::System.print_error "%s +%lld in %s", sname, offset.to_i64, fname
+      System.print_error "%s +%lld in %s", sname, offset.to_i64, fname
     else
-      Crystal::System.print_error "???"
+      System.print_error "???"
     end
   end
 

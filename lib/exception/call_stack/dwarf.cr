@@ -21,7 +21,7 @@ struct Exception::CallStack
       rescue ex
         @@dwarf_line_numbers = nil
         @@dwarf_function_names = nil
-        Crystal::System.print_exception "Unable to load dwarf information", ex
+        System.print_exception "Unable to load dwarf information", ex
       end
     end
   end

@@ -59,6 +59,11 @@ test:
 	@./cache/tu
 	@rm -f cache/tu
 
+.PHONY: hello
+hello:
+	build -p -r -o hello test/hello.cr
+	./hello
+
 .PHONY: build
 build: $(LLVM_EXT_OBJ) ## Build the compiler
 	build $(FLAGS) -o $@ src/build.cr

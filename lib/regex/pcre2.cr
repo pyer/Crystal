@@ -1,5 +1,5 @@
 require "./lib_pcre2"
-require "crystal/thread_local_value"
+require "thread/thread_local_value"
 
 # :nodoc:
 module Regex::PCRE2
@@ -234,7 +234,7 @@ module Regex::PCRE2
   #
   # Only a single `match` function can run per thread at any given time, so there
   # can't be any concurrent access to the JIT stack.
-  @@jit_stack = Crystal::ThreadLocalValue(LibPCRE2::JITStack*).new
+  @@jit_stack = ThreadLocalValue(LibPCRE2::JITStack*).new
 
   def self.jit_stack
     @@jit_stack.get do
@@ -246,7 +246,7 @@ module Regex::PCRE2
   #
   # Match data contains a buffer for backtracking when matching in interpreted mode (non-JIT).
   # This buffer is heap-allocated and should be re-used for subsequent matches.
-  @match_data = Crystal::ThreadLocalValue(LibPCRE2::MatchData*).new
+  @match_data = ThreadLocalValue(LibPCRE2::MatchData*).new
 
   private def match_data
     @match_data.get do

@@ -160,7 +160,7 @@ module GC
       # This implements `String#starts_with?` without allocating a `String` (#11728)
       format_string = Slice.new(msg, Math.min(LibC.strlen(msg), start.bytesize))
       unless format_string == start.to_slice
-        Crystal::System.print_error msg, v
+        System.print_error msg, v
       end
     end
   end

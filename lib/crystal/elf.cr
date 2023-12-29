@@ -175,7 +175,7 @@ module Crystal
         #   end
         # end
         # ```
-        Crystal::System.print_error "Error: %s\n", "Runtime is not initialized"
+        ::System.print_error "Error: %s\n", "Runtime is not initialized"
         LibC.exit 1
       end
 

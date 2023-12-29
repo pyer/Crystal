@@ -1,4 +1,3 @@
-#require "process/executable_path" # Process::PATH_DELIMITER
 
 lib LibCrystalMain
   @[Raises]

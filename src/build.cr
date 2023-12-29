@@ -4,7 +4,7 @@ module Build
   VERSION      = "2.0.1"
   LLVM_VERSION = "12.0.1"
   TARGET       = "x86_64-linux-gnu"
-  PATH         = "/usr/lib/crystal"
+  PATH         = "/usr/lib/build"
   BUILD_DATE   = {{ `date +'"%Y-%m-%d %H:%M:%S"'` }}
 end
 

@@ -176,7 +176,6 @@ class Dir
   # array.sort # => [".", "..", "config.h"]
   # ```
   def read : String?
-#    Crystal::System::Dir.next(@dir, path)
     Dir.next_entry(@dir, path).try &.name
   end
 
@@ -206,21 +205,18 @@ class Dir
 
   # Repositions this directory to the first entry.
   def rewind : self
-    #Crystal::System::Dir.rewind(@dir)
     LibC.rewinddir(@dir)
     self
   end
 
   # This method is faster than `.info` and avoids race conditions if a `Dir` is already open on POSIX systems, but not necessarily on windows.
   def info : File::Info
-    #Crystal::System::Dir.info(@dir, path)
-    Crystal::System::FileDescriptor.system_info LibC.dirfd(@dir)
+    System::FileDescriptor.system_info LibC.dirfd(@dir)
   end
 
   # Closes the directory stream.
   def close : Nil
     return if @closed
-    #Crystal::System::Dir.close(@dir, path)
     if LibC.closedir(@dir) != 0
       raise ::File::Error.from_errno("Error closing directory", file: path)
     end
@@ -234,12 +230,11 @@ class Dir
   # On POSIX systems, it respects the environment value `$PWD` if available and
   # if it points to the current working directory.
   def self.current : String
-    #Crystal::System::Dir.current
     # If $PWD is set and it matches the current path, use that.
     # This helps telling apart symlinked paths.
     if (pwd = ENV["PWD"]?) && pwd.starts_with?("/") &&
-       (pwd_info = ::Crystal::System::File.info?(pwd, follow_symlinks: true)) &&
-       (dot_info = ::Crystal::System::File.info?(".", follow_symlinks: true)) &&
+       (pwd_info = System::File.info?(pwd, follow_symlinks: true)) &&
+       (dot_info = System::File.info?(".", follow_symlinks: true)) &&
        pwd_info.same_file?(dot_info)
       return pwd
     end
@@ -255,7 +250,6 @@ class Dir
 
   # Changes the current working directory of the process to the given string.
   def self.cd(path : Path | String) : String
-    #Crystal::System::Dir.current = path.to_s
     p = path.to_s
     if LibC.chdir(p.check_no_null_byte) != 0
       raise ::File::Error.from_errno("Error while changing directory", file: p.to_s)
@@ -282,7 +276,6 @@ class Dir
   # Dir.tempdir # => "/tmp"
   # ```
   def self.tempdir : String
-    #Crystal::System::Dir.tempdir
     tmpdir = ENV["TMPDIR"]? || "/tmp"
     tmpdir.rchop(::File::SEPARATOR)
   end
@@ -359,7 +352,6 @@ class Dir
   # Dir.exists?("testdir") # => true
   # ```
   def self.mkdir(path : Path | String, mode = 0o777) : Nil
-    #Crystal::System::Dir.create(path.to_s, mode)
     p = path.to_s
     if LibC.mkdir(p.check_no_null_byte, mode) == -1
       raise ::File::Error.from_errno("Unable to create directory", file: p)
@@ -386,7 +378,6 @@ class Dir
   # is a reparse point, such as a symbolic link. Those directories can be
   # deleted using `File.delete` instead.
   def self.delete(path : Path | String) : Nil
-    #Crystal::System::Dir.delete(path.to_s, raise_on_missing: true)
     p = path.to_s
     if LibC.rmdir(p.check_no_null_byte) == 0
       true
@@ -412,7 +403,6 @@ class Dir
   # is a reparse point, such as a symbolic link. Those directories can be
   # deleted using `File.delete?` instead.
   def self.delete?(path : Path | String) : Bool
-    #Crystal::System::Dir.delete(path.to_s, raise_on_missing: false)
     p = path.to_s
     return LibC.rmdir(p.check_no_null_byte) == 0
   end

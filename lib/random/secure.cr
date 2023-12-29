@@ -1,4 +1,4 @@
-require "crystal/system/random"
+require "system/random"
 
 # `Random::Secure` generates random numbers from a secure source provided by the system.
 #
@@ -10,21 +10,18 @@ require "crystal/system/random"
 # Random::Secure.rand(6)            # => 4
 # [1, 5, 6].shuffle(Random::Secure) # => [6, 1, 5]
 # ```
-#
-# On BSD-based systems and macOS/Darwin, it uses [`arc4random`](https://man.openbsd.org/arc4random),
 # on Linux [`getrandom`](http://man7.org/linux/man-pages/man2/getrandom.2.html) (if the kernel supports it),
-# on Windows [`RtlGenRandom`](https://docs.microsoft.com/en-us/windows/win32/api/ntsecapi/nf-ntsecapi-rtlgenrandom),
 # and falls back to reading from `/dev/urandom` on UNIX systems.
 module Random::Secure
   extend Random
   extend self
 
   def next_u
-    Crystal::System::Random.next_u
+    System::Random.next_u
   end
 
   def random_bytes(buf : Bytes) : Nil
-    Crystal::System::Random.random_bytes(buf)
+    System::Random.random_bytes(buf)
   end
 
   {% for type in [UInt8, UInt16, UInt32, UInt64, UInt128] %}

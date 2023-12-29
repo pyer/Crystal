@@ -80,7 +80,7 @@ struct Crystal::Hasher
   private HASH_INF_MINUS = (-314159_i64).unsafe_as(UInt64)
 
   @@seed = uninitialized UInt64[2]
-  Crystal::System::Random.random_bytes(@@seed.to_slice.to_unsafe_bytes)
+  ::System::Random.random_bytes(@@seed.to_slice.to_unsafe_bytes)
 
   def initialize(@a : UInt64 = @@seed[0], @b : UInt64 = @@seed[1])
   end

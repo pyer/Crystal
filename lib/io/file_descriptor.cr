@@ -1,8 +1,8 @@
-require "crystal/system/file_descriptor"
+require "system/file_descriptor"
 
 # An `IO` over a file descriptor.
 class IO::FileDescriptor < IO
-  include Crystal::System::FileDescriptor
+  include System::FileDescriptor
   include IO::Buffered
 
   # The raw file-descriptor. It is defined to be an `Int`, but its size is
@@ -37,7 +37,7 @@ class IO::FileDescriptor < IO
 
   # :nodoc:
   def self.from_stdio(fd) : self
-    Crystal::System::FileDescriptor.from_stdio(fd)
+    System::FileDescriptor.from_stdio(fd)
   end
 
   def blocking
@@ -57,11 +57,11 @@ class IO::FileDescriptor < IO
   end
 
   def self.fcntl(fd, cmd, arg = 0)
-    Crystal::System::FileDescriptor.fcntl(fd, cmd, arg)
+    System::FileDescriptor.fcntl(fd, cmd, arg)
   end
 
   def fcntl(cmd, arg = 0)
-    Crystal::System::FileDescriptor.fcntl(fd, cmd, arg)
+    System::FileDescriptor.fcntl(fd, cmd, arg)
   end
 
   # Returns a `File::Info` object for this file descriptor, or raises

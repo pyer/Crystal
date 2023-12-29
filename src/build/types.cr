@@ -2684,9 +2684,6 @@ module Crystal
       "lib"
     end
 
-    def wasm_import_module
-      (@link_annotations.try &.find &.wasm_import_module).try &.wasm_import_module
-    end
   end
 
   # A `type` (typedef) type inside a `lib` declaration.

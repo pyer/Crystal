@@ -316,7 +316,7 @@ module FileUtils
   # FileUtils.mv("afile", "afile.cr")
   # ```
   def mv(src_path : Path | String, dest_path : Path | String) : Nil
-    if error = Crystal::System::File.rename(src_path.to_s, dest_path.to_s)
+    if error = System::File.rename(src_path.to_s, dest_path.to_s)
       raise error unless Errno.value.in?(Errno::EXDEV, Errno::EPERM)
       cp_r(src_path, dest_path)
       rm_r(src_path)

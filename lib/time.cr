@@ -1,4 +1,4 @@
-require "crystal/system/time"
+require "system/time"
 
 # `Time` represents a date-time instant in
 # [incremental time](https://www.w3.org/International/articles/definitions-time/#incremental_time)
@@ -336,7 +336,7 @@ struct Time
   #
   # The execution time of a block can be measured using `.measure`.
   def self.monotonic : Time::Span
-    seconds, nanoseconds = Crystal::System::Time.monotonic
+    seconds, nanoseconds = System::Time.monotonic
     Time::Span.new(seconds: seconds, nanoseconds: nanoseconds)
   end
 
@@ -360,7 +360,7 @@ struct Time
   # Creates a new `Time` instance representing the current time from the
   # system clock observed in *location* (defaults to local time zone).
   def self.local(location : Location = Location.local) : Time
-    seconds, nanoseconds = Crystal::System::Time.compute_utc_seconds_and_nanoseconds
+    seconds, nanoseconds = System::Time.compute_utc_seconds_and_nanoseconds
     new(seconds: seconds, nanoseconds: nanoseconds, location: location)
   end
 

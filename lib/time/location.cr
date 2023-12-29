@@ -294,22 +294,7 @@ class Time::Location
         end
       end
 
-      if location = load(name, Crystal::System::Time.zone_sources)
-        return location
-      end
-
-      {% if flag?(:android) %}
-        if location = load_android(name, Crystal::System::Time.android_tzdata_sources)
-          return location
-        end
-      {% end %}
-
-      # If none of the database sources contains a suitable location,
-      # try getting it from the operating system.
-      # This is only implemented on Windows. Unix systems usually have a
-      # copy of the time zone database available, and no system API
-      # for loading time zone information.
-      if location = Crystal::System::Time.load_iana_zone(name)
+      if location = load(name, ZONE_SOURCES)
         return location
       end
 
@@ -351,7 +336,7 @@ class Time::Location
     when "", "UTC"
       return UTC
     when Nil
-      if localtime = Crystal::System::Time.load_localtime
+      if localtime = load_localtime
         return localtime
       end
     else
@@ -360,13 +345,22 @@ class Time::Location
           return location
         end
       end
-      if location = load?(tz, Crystal::System::Time.zone_sources)
+      if location = load?(tz, ZONE_SOURCES)
         return location
       end
     end
 
     UTC
   end
+
+  # List of paths where time zone data should be looked up.
+  # Many systems use /usr/share/zoneinfo, Solaris 2 has
+  # /usr/share/lib/zoneinfo, IRIX 6 has /usr/lib/locale/TZ.
+  private ZONE_SOURCES = {
+    "/usr/share/zoneinfo/",
+    "/usr/share/lib/zoneinfo/",
+    "/usr/lib/locale/TZ/",
+  }
 
   # :nodoc:
   def initialize(@name : String, @zones : Array(Zone), @transitions = [] of ZoneTransition)

@@ -4,9 +4,9 @@ module Crystal
     getter pkg_config : String?
     getter ldflags : String?
     getter framework : String?
-    getter wasm_import_module : String?
 
-    def initialize(@lib = nil, @pkg_config = @lib, @ldflags = nil, @static = false, @framework = nil, @wasm_import_module = nil)
+    #def initialize(@lib = nil, @ldflags = nil, @static = false, @framework = nil)
+    def initialize(@lib = nil, @pkg_config = @lib, @ldflags = nil, @static = false, @framework = nil)
     end
 
     def static?
@@ -24,9 +24,7 @@ module Crystal
       lib_name = nil
       lib_ldflags = nil
       lib_static = false
-      lib_pkg_config = nil
       lib_framework = nil
-      lib_wasm_import_module = nil
       count = 0
 
       args.each do |arg|
@@ -72,41 +70,18 @@ module Crystal
           lib_framework = value.value
         when "pkg_config"
           named_arg.raise "'pkg_config' link argument must be a String" unless value.is_a?(StringLiteral)
-          lib_pkg_config = value.value
-        when "wasm_import_module"
-          named_arg.raise "'wasm_import_module' link argument must be a String" unless value.is_a?(StringLiteral)
-          lib_wasm_import_module = value.value
+          #lib_pkg_config = value.value
         else
-          named_arg.raise "unknown link argument: '#{named_arg.name}' (valid arguments are 'lib', 'ldflags', 'static', 'pkg_config', 'framework', and 'wasm_import_module')"
+          named_arg.raise "unknown link argument: '#{named_arg.name}' (valid arguments are 'lib', 'ldflags', 'static' and 'framework')"
         end
       end
 
-      new(lib_name, lib_pkg_config, lib_ldflags, lib_static, lib_framework, lib_wasm_import_module)
+      new(lib_name, nil, lib_ldflags, lib_static, lib_framework)
     end
   end
 
   class Program
     def lib_flags
-      has_flag?("windows") ? lib_flags_windows : lib_flags_posix
-    end
-
-    private def lib_flags_windows
-      flags = [] of String
-
-      link_annotations.reverse_each do |ann|
-        if ldflags = ann.ldflags
-          flags << ldflags
-        end
-
-        if libname = ann.lib
-          flags << Process.quote_windows("#{libname}.lib")
-        end
-      end
-
-      flags.join(" ")
-    end
-
-    private def lib_flags_posix
       flags = [] of String
       static_build = has_flag?("static")
 
@@ -123,45 +98,15 @@ module Crystal
         if ldflags = ann.ldflags
           flags << ldflags
         end
-
-        # First, check pkg-config for the pkg-config module name if provided, then
-        # check pkg-config with the lib name, then fall back to -lname
-        if (pkg_config_name = ann.pkg_config) && (flag = pkg_config(pkg_config_name, static_build))
-          flags << flag
-        elsif (lib_name = ann.lib) && (flag = pkg_config(lib_name, static_build))
-          flags << flag
-        elsif (lib_name = ann.lib)
+        if lib_name = ann.lib
           flags << Process.quote_posix("-l#{lib_name}")
         end
-
         if framework = ann.framework
           flags << "-framework" << Process.quote_posix(framework)
         end
       end
 
       flags.join(" ")
-    end
-
-    PKG_CONFIG_PATH = Process.find_executable("pkg-config")
-
-    # Returns the result of running `pkg-config mod` but returns nil if
-    # pkg-config is not installed, or the module does not exist.
-    private def pkg_config(mod, static = false) : String?
-      return unless pkg_config_path = PKG_CONFIG_PATH
-      return unless (Process.run(pkg_config_path, {mod}).success? rescue nil)
-
-      args = ["--libs"]
-      args << "--static" if static
-      args << mod
-
-      process = Process.new(pkg_config_path, args, input: :close, output: :pipe, error: :inherit)
-      flags = process.output.gets_to_end.chomp
-      status = process.wait
-      if status.success?
-        flags
-      else
-        nil
-      end
     end
 
     # Returns every @[Link] annotation in the program parsed as `LinkAnnotation`

@@ -1,6 +1,6 @@
 require "fiber"
 require "channel"
-require "crystal/scheduler"
+require "scheduler"
 
 # Blocks the current fiber for the specified number of seconds.
 #
@@ -11,7 +11,7 @@ def sleep(seconds : Number) : Nil
     raise ArgumentError.new "Sleep seconds must be positive"
   end
 
-  Crystal::Scheduler.sleep(seconds.seconds)
+  Scheduler.sleep(seconds.seconds)
 end
 
 # Blocks the current Fiber for the specified time span.
@@ -19,14 +19,14 @@ end
 # While this fiber is waiting this time, other ready-to-execute
 # fibers might start their execution.
 def sleep(time : Time::Span) : Nil
-  Crystal::Scheduler.sleep(time)
+  Scheduler.sleep(time)
 end
 
 # Blocks the current fiber forever.
 #
 # Meanwhile, other ready-to-execute fibers might start their execution.
 def sleep : Nil
-  Crystal::Scheduler.reschedule
+  Scheduler.reschedule
 end
 
 # Spawns a new fiber.
@@ -62,7 +62,7 @@ def spawn(*, name : String? = nil, same_thread = false, &block)
   if same_thread
     fiber.@current_thread.set(Thread.current)
   end
-  Crystal::Scheduler.enqueue fiber
+  Scheduler.enqueue fiber
   fiber
 end
 

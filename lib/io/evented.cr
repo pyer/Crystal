@@ -1,6 +1,5 @@
-{% skip_file if flag?(:win32) %}
 
-require "crystal/thread_local_value"
+require "thread/thread_local_value"
 
 module IO::Evented
   @read_timed_out = false
@@ -9,11 +8,11 @@ module IO::Evented
   @read_timeout : Time::Span?
   @write_timeout : Time::Span?
 
-  @readers = Crystal::ThreadLocalValue(Deque(Fiber)).new
-  @writers = Crystal::ThreadLocalValue(Deque(Fiber)).new
+  @readers = ThreadLocalValue(Deque(Fiber)).new
+  @writers = ThreadLocalValue(Deque(Fiber)).new
 
-  @read_event = Crystal::ThreadLocalValue(Crystal::EventLoop::Event).new
-  @write_event = Crystal::ThreadLocalValue(Crystal::EventLoop::Event).new
+  @read_event = ThreadLocalValue(System::EventLoop::Event).new
+  @write_event = ThreadLocalValue(System::EventLoop::Event).new
 
   # Returns the time to wait when reading before raising an `IO::TimeoutError`.
   def read_timeout : Time::Span?
@@ -102,7 +101,7 @@ module IO::Evented
     @read_timed_out = timed_out
 
     if reader = @readers.get?.try &.shift?
-      Crystal::Scheduler.enqueue reader
+      Scheduler.enqueue reader
     end
   end
 
@@ -111,7 +110,7 @@ module IO::Evented
     @write_timed_out = timed_out
 
     if writer = @writers.get?.try &.shift?
-      Crystal::Scheduler.enqueue writer
+      Scheduler.enqueue writer
     end
   end
 
@@ -125,7 +124,7 @@ module IO::Evented
     readers = @readers.get { Deque(Fiber).new }
     readers << Fiber.current
     add_read_event(timeout)
-    Crystal::Scheduler.reschedule
+    Scheduler.reschedule
 
     if @read_timed_out
       @read_timed_out = false
@@ -136,7 +135,7 @@ module IO::Evented
   end
 
   private def add_read_event(timeout = @read_timeout) : Nil
-    event = @read_event.get { Crystal::Scheduler.event_loop.create_fd_read_event(self) }
+    event = @read_event.get { Scheduler.event_loop.create_fd_read_event(self) }
     event.add timeout
   end
 
@@ -150,7 +149,7 @@ module IO::Evented
     writers = @writers.get { Deque(Fiber).new }
     writers << Fiber.current
     add_write_event(timeout)
-    Crystal::Scheduler.reschedule
+    Scheduler.reschedule
 
     if @write_timed_out
       @write_timed_out = false
@@ -161,7 +160,7 @@ module IO::Evented
   end
 
   private def add_write_event(timeout = @write_timeout) : Nil
-    event = @write_event.get { Crystal::Scheduler.event_loop.create_fd_write_event(self) }
+    event = @write_event.get { Scheduler.event_loop.create_fd_write_event(self) }
     event.add timeout
   end
 
@@ -175,11 +174,11 @@ module IO::Evented
     @write_event.consume_each &.free
 
     @readers.consume_each do |readers|
-      Crystal::Scheduler.enqueue readers
+      Scheduler.enqueue readers
     end
 
     @writers.consume_each do |writers|
-      Crystal::Scheduler.enqueue writers
+      Scheduler.enqueue writers
     end
   end
 

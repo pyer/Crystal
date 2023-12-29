@@ -1,4 +1,4 @@
-require "crystal/system/signal"
+require "system/signal"
 
 # Safely handle inter-process signals on POSIX systems.
 #
@@ -58,9 +58,6 @@ enum Signal : Int32
   TERM = LibC::SIGTERM
   ABRT = LibC::SIGABRT
 
-  {% if flag?(:win32) %}
-    BREAK = LibC::SIGBREAK
-  {% else %}
     HUP    = LibC::SIGHUP
     QUIT   = LibC::SIGQUIT
     TRAP   = LibC::SIGTRAP
@@ -85,12 +82,9 @@ enum Signal : Int32
     USR2   = LibC::SIGUSR2
     WINCH  = LibC::SIGWINCH
 
-    {% if flag?(:linux) %}
-      PWR    = LibC::SIGPWR
-      STKFLT = LibC::SIGSTKFLT
-      UNUSED = LibC::SIGUNUSED
-    {% end %}
-  {% end %}
+    PWR    = LibC::SIGPWR
+    STKFLT = LibC::SIGSTKFLT
+    UNUSED = LibC::SIGUNUSED
 
   # Sets the handler for this signal to the passed function.
   #
@@ -110,11 +104,11 @@ enum Signal : Int32
   def trap(&handler : Signal ->) : Nil
     {% if @type.has_constant?("CHLD") %}
       if self == CHLD
-        Crystal::System::Signal.child_handler = handler
+        System::Signal.child_handler = handler
         return
       end
     {% end %}
-    Crystal::System::Signal.trap(self, handler)
+    System::Signal.trap(self, handler)
   end
 
   # Resets the handler for this signal to the OS default.
@@ -123,7 +117,7 @@ enum Signal : Int32
   # handler that monitors and reaps child processes. This prevents zombie
   # processes and is required by `Process#wait` for example.
   def reset : Nil
-    Crystal::System::Signal.reset(self)
+    System::Signal.reset(self)
   end
 
   # Clears the handler for this signal and prevents the OS default action.
@@ -132,6 +126,6 @@ enum Signal : Int32
   # handler that monitors and reaps child processes. This prevents zombie
   # processes and is required by `Process#wait` for example.
   def ignore : Nil
-    Crystal::System::Signal.ignore(self)
+    System::Signal.ignore(self)
   end
 end

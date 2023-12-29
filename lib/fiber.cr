@@ -1,6 +1,6 @@
-require "crystal/system/thread_linked_list"
-require "./fiber/context"
-require "./fiber/stack_pool"
+require "thread/thread_linked_list"
+require "fiber/context"
+require "fiber/stack_pool"
 
 # :nodoc:
 @[NoInline]
@@ -52,8 +52,8 @@ class Fiber
 
   @context : Context
   @stack : Void*
-  @resume_event : Crystal::EventLoop::Event?
-  @timeout_event : Crystal::EventLoop::Event?
+  @resume_event : System::EventLoop::Event?
+  @timeout_event : System::EventLoop::Event?
   # :nodoc:
   property timeout_select_action : Channel::TimeoutAction?
   protected property stack_bottom : Void*
@@ -154,7 +154,7 @@ class Fiber
     STDERR.flush
   ensure
     {% if flag?(:preview_mt) %}
-      Crystal::Scheduler.enqueue_free_stack @stack
+      Scheduler.enqueue_free_stack @stack
     {% elsif flag?(:interpreted) %}
       # For interpreted mode we don't need a new stack, the stack is held by the interpreter
     {% else %}
@@ -170,12 +170,12 @@ class Fiber
     @timeout_select_action = nil
 
     @alive = false
-    Crystal::Scheduler.reschedule
+    Scheduler.reschedule
   end
 
   # Returns the current fiber.
   def self.current : Fiber
-    Crystal::Scheduler.current_fiber
+    Scheduler.current_fiber
   end
 
   # The fiber's proc is currently running or didn't fully save its context. The
@@ -211,7 +211,7 @@ class Fiber
   # puts "never reached"
   # ```
   def resume : Nil
-    Crystal::Scheduler.resume(self)
+    Scheduler.resume(self)
   end
 
   # Adds this fiber to the scheduler's runnables queue for the current thread.
@@ -220,17 +220,17 @@ class Fiber
   # the next time it has the opportunity to reschedule to another fiber. There
   # are no guarantees when that will happen.
   def enqueue : Nil
-    Crystal::Scheduler.enqueue(self)
+    Scheduler.enqueue(self)
   end
 
   # :nodoc:
-  def resume_event : Crystal::EventLoop::Event
-    @resume_event ||= Crystal::Scheduler.event_loop.create_resume_event(self)
+  def resume_event : System::EventLoop::Event
+    @resume_event ||= Scheduler.event_loop.create_resume_event(self)
   end
 
   # :nodoc:
-  def timeout_event : Crystal::EventLoop::Event
-    @timeout_event ||= Crystal::Scheduler.event_loop.create_timeout_event(self)
+  def timeout_event : System::EventLoop::Event
+    @timeout_event ||= Scheduler.event_loop.create_timeout_event(self)
   end
 
   # :nodoc:
@@ -248,11 +248,11 @@ class Fiber
   # The current fiber will resume after a period of time.
   # The timeout can be cancelled with `cancel_timeout`
   def self.timeout(timeout : Time::Span?, select_action : Channel::TimeoutAction? = nil) : Nil
-    Crystal::Scheduler.current_fiber.timeout(timeout, select_action)
+    Scheduler.current_fiber.timeout(timeout, select_action)
   end
 
   def self.cancel_timeout : Nil
-    Crystal::Scheduler.current_fiber.cancel_timeout
+    Scheduler.current_fiber.cancel_timeout
   end
 
   # Yields to the scheduler and allows it to swap execution to other
@@ -284,7 +284,7 @@ class Fiber
   # end
   # ```
   def self.yield : Nil
-    Crystal::Scheduler.yield
+    Scheduler.yield
   end
 
   def to_s(io : IO) : Nil

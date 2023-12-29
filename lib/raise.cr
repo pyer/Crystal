@@ -45,7 +45,7 @@ private def traverse_eh_table(leb, start, ip, actions, &)
 
   lp_start_encoding = leb.read_uint8 # @LPStart encoding
   if lp_start_encoding != 0xff_u8
-    Crystal::System.print_error "Unexpected encoding for LPStart: #{lp_start_encoding}\n"
+    System.print_error "Unexpected encoding for LPStart: #{lp_start_encoding}\n"
     LibC.exit 1
   end
 
@@ -55,7 +55,7 @@ private def traverse_eh_table(leb, start, ip, actions, &)
 
   cs_encoding = leb.read_uint8 # CS Encoding (1: uleb128, 3: uint32)
   if cs_encoding != 1 && cs_encoding != 3
-    Crystal::System.print_error "Unexpected CS encoding: #{cs_encoding}\n"
+    System.print_error "Unexpected CS encoding: #{cs_encoding}\n"
     LibC.exit 1
   end
 
@@ -108,7 +108,7 @@ end
   # :nodoc:
   @[Raises]
   fun __crystal_raise(unwind_ex : LibUnwind::Exception*) : NoReturn
-    Crystal::System.print_error "EXITING: __crystal_raise called"
+    System.print_error "EXITING: __crystal_raise called"
     LibC.exit(1)
   end
 {% elsif flag?(:arm) %}
@@ -163,20 +163,20 @@ end
 {% elsif flag?(:wasm32) %}
   # :nodoc:
   fun __crystal_personality
-    Crystal::System.print_error "EXITING: __crystal_personality called"
+    System.print_error "EXITING: __crystal_personality called"
     LibC.exit(1)
   end
 
   # :nodoc:
   @[Raises]
   fun __crystal_raise(ex : Void*) : NoReturn
-    Crystal::System.print_error "EXITING: __crystal_raise called"
+    System.print_error "EXITING: __crystal_raise called"
     LibC.exit(1)
   end
 
   # :nodoc:
   fun __crystal_get_exception(ex : Void*) : UInt64
-    Crystal::System.print_error "EXITING: __crystal_get_exception called"
+    System.print_error "EXITING: __crystal_get_exception called"
     LibC.exit(1)
     0u64
   end
@@ -204,9 +204,9 @@ end
   @[Raises]
   fun __crystal_raise(unwind_ex : LibUnwind::Exception*) : NoReturn
     ret = LibUnwind.raise_exception(unwind_ex)
-    Crystal::System.print_error "Failed to raise an exception: %s\n", ret.to_s
+    System.print_error "Failed to raise an exception: %s\n", ret.to_s
     Exception::CallStack.print_backtrace
-    Crystal::System.print_exception("\nTried to raise:", unwind_ex.value.exception_object.as(Exception))
+    System.print_exception("\nTried to raise:", unwind_ex.value.exception_object.as(Exception))
     LibC.exit(ret)
   end
 
@@ -218,7 +218,7 @@ end
 
 {% if flag?(:wasm32) %}
   def raise(exception : Exception) : NoReturn
-    Crystal::System.print_error "EXITING: Attempting to raise:\n#{exception.inspect_with_backtrace}"
+    System.print_error "EXITING: Attempting to raise:\n#{exception.inspect_with_backtrace}"
     LibIntrinsics.debugtrap
     LibC.exit(1)
   end

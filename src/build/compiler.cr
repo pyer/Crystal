@@ -409,8 +409,6 @@ module Crystal
         if cpu.empty? && !features.includes?("fp")
           features += "+vfp2"
         end
-      when "wasm32"
-        LLVM.init_webassembly
       else
         raise Error.new("Unsupported architecture for target triple: #{target_machine.to_s}")
       end

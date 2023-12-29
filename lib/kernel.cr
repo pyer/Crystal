@@ -542,11 +542,11 @@ end
     def self.after_fork_child_callbacks
       @@after_fork_child_callbacks ||= [
         # clean ups (don't depend on event loop):
-        ->Crystal::System::Signal.after_fork,
-        ->Crystal::System::SignalChildHandler.after_fork,
+        ->System::Signal.after_fork,
+        ->System::SignalChildHandler.after_fork,
 
         # reinit event loop:
-        ->{ Crystal::Scheduler.event_loop.after_fork },
+        ->{ Scheduler.event_loop.after_fork },
 
         # more clean ups (may depend on event loop):
         ->Random::DEFAULT.new_seed,
@@ -563,12 +563,7 @@ end
       Fiber.stack_pool.collect
     end
   end
-
-  {% if flag?(:win32) %}
-    Crystal::System::Process.start_interrupt_loop
-  {% else %}
-    Crystal::System::Signal.setup_default_handlers
-  {% end %}
+  System::Signal.setup_default_handlers
 
   # load debug info on start up of the program is executed with CRYSTAL_LOAD_DEBUG_INFO=1
   # this will make debug info available on print_frame that is used by Crystal's segfault handler
@@ -580,6 +575,6 @@ end
   Exception::CallStack.setup_crash_handler
 
   {% if flag?(:preview_mt) %}
-    Crystal::Scheduler.init_workers
+    Scheduler.init_workers
   {% end %}
 {% end %}

@@ -2,7 +2,7 @@ class File < IO::FileDescriptor
 end
 
 require "./file/error"
-require "crystal/system/file"
+require "system/file"
 
 # A `File` instance represents a file entry in the local file system and allows using it as an `IO`.
 #
@@ -122,7 +122,7 @@ class File < IO::FileDescriptor
     end
   end
 
-  include Crystal::System::File
+  include System::File
 
   # This constructor is provided for subclasses to be able to initialize an
   # `IO::FileDescriptor` with a *path* and *fd*.
@@ -159,7 +159,7 @@ class File < IO::FileDescriptor
   # effect; it is provided only for POSIX compatibility.
   def self.new(filename : Path | String, mode = "r", perm = DEFAULT_CREATE_PERMISSIONS, encoding = nil, invalid = nil)
     filename = filename.to_s
-    fd = Crystal::System::File.open(filename, mode, perm)
+    fd = System::File.open(filename, mode, perm)
     new(filename, fd, blocking: true, encoding: encoding, invalid: invalid)
   end
 
@@ -182,7 +182,7 @@ class File < IO::FileDescriptor
   #
   # Use `IO::FileDescriptor#info` if the file is already open.
   def self.info?(path : Path | String, follow_symlinks = true) : Info?
-    Crystal::System::File.info?(path.to_s, follow_symlinks)
+    System::File.info?(path.to_s, follow_symlinks)
   end
 
   # Returns a `File::Info` object for the file given by *path* or raises
@@ -202,7 +202,7 @@ class File < IO::FileDescriptor
   #
   # Use `IO::FileDescriptor#info` if the file is already open.
   def self.info(path : Path | String, follow_symlinks = true) : Info
-    Crystal::System::File.info(path.to_s, follow_symlinks)
+    System::File.info(path.to_s, follow_symlinks)
   end
 
   # Returns whether the file given by *path* exists.
@@ -217,7 +217,7 @@ class File < IO::FileDescriptor
   # File.exists?("foo") # => true
   # ```
   def self.exists?(path : Path | String) : Bool
-    Crystal::System::File.exists?(path.to_s)
+    System::File.exists?(path.to_s)
   end
 
   # Returns `true` if *path1* and *path2* represents the same file.
@@ -276,7 +276,7 @@ class File < IO::FileDescriptor
   # File.readable?("foo") # => true
   # ```
   def self.readable?(path : Path | String) : Bool
-    Crystal::System::File.readable?(path.to_s)
+    System::File.readable?(path.to_s)
   end
 
   # Returns `true` if *path* is writable by the real user id of this process else returns `false`.
@@ -286,7 +286,7 @@ class File < IO::FileDescriptor
   # File.writable?("foo") # => true
   # ```
   def self.writable?(path : Path | String) : Bool
-    Crystal::System::File.writable?(path.to_s)
+    System::File.writable?(path.to_s)
   end
 
   # Returns `true` if *path* is executable by the real user id of this process else returns `false`.
@@ -296,7 +296,7 @@ class File < IO::FileDescriptor
   # File.executable?("foo") # => false
   # ```
   def self.executable?(path : Path | String) : Bool
-    Crystal::System::File.executable?(path.to_s)
+    System::File.executable?(path.to_s)
   end
 
   # Returns `true` if given *path* exists and is a file.
@@ -376,7 +376,7 @@ class File < IO::FileDescriptor
   #
   # Use `#chown` if the `File` is already open.
   def self.chown(path : Path | String, uid : Int = -1, gid : Int = -1, follow_symlinks = false) : Nil
-    Crystal::System::File.chown(path.to_s, uid, gid, follow_symlinks)
+    System::File.chown(path.to_s, uid, gid, follow_symlinks)
   end
 
   # Changes the permissions of the specified file.
@@ -394,7 +394,7 @@ class File < IO::FileDescriptor
   #
   # Use `#chmod` if the `File` is already open.
   def self.chmod(path : Path | String, permissions : Int | Permissions) : Nil
-    Crystal::System::File.chmod(path.to_s, permissions)
+    System::File.chmod(path.to_s, permissions)
   end
 
   # Deletes the file at *path*. Raises `File::Error` on failure.
@@ -408,7 +408,7 @@ class File < IO::FileDescriptor
   # File.delete("./bar") # raises File::NotFoundError (No such file or directory)
   # ```
   def self.delete(path : Path | String) : Nil
-    Crystal::System::File.delete(path.to_s, raise_on_missing: true)
+    System::File.delete(path.to_s, raise_on_missing: true)
   end
 
   # Deletes the file at *path*, or returns `false` if the file does not exist.
@@ -423,7 +423,7 @@ class File < IO::FileDescriptor
   # File.delete?("./bar") # => false
   # ```
   def self.delete?(path : Path | String) : Bool
-    Crystal::System::File.delete(path.to_s, raise_on_missing: false)
+    System::File.delete(path.to_s, raise_on_missing: false)
   end
 
   # Returns *filename*'s extension, or an empty string if it has no extension.
@@ -663,7 +663,7 @@ class File < IO::FileDescriptor
 
   # Resolves the real path of *path* by following symbolic links.
   def self.realpath(path : Path | String) : String
-    Crystal::System::File.realpath(path.to_s)
+    System::File.realpath(path.to_s)
   end
 
   # :ditto:
@@ -675,12 +675,12 @@ class File < IO::FileDescriptor
   # Creates a new link (also known as a hard link) at *new_path* to an existing file
   # given by *old_path*.
   def self.link(old_path : Path | String, new_path : Path | String) : Nil
-    Crystal::System::File.link(old_path.to_s, new_path.to_s)
+    System::File.link(old_path.to_s, new_path.to_s)
   end
 
   # Creates a symbolic link at *new_path* to an existing file given by *old_path*.
   def self.symlink(old_path : Path | String, new_path : Path | String) : Nil
-    Crystal::System::File.symlink(old_path.to_s, new_path.to_s)
+    System::File.symlink(old_path.to_s, new_path.to_s)
   end
 
   # Returns `true` if the *path* is a symbolic link.
@@ -694,7 +694,7 @@ class File < IO::FileDescriptor
 
   # Returns value of a symbolic link .
   def self.readlink(path : Path | String) : String
-    Crystal::System::File.readlink(path.to_s)
+    System::File.readlink(path.to_s)
   end
 
   # Opens the file named by *filename*. If a file is being created, its initial
@@ -863,7 +863,7 @@ class File < IO::FileDescriptor
   # File.exists?("afile.cr") # => true
   # ```
   def self.rename(old_filename : Path | String, new_filename : Path | String) : Nil
-    if error = Crystal::System::File.rename(old_filename.to_s, new_filename.to_s)
+    if error = System::File.rename(old_filename.to_s, new_filename.to_s)
       raise error
     end
   end
@@ -878,7 +878,7 @@ class File < IO::FileDescriptor
   #
   # Use `#utime` if the `File` is already open.
   def self.utime(atime : Time, mtime : Time, filename : Path | String) : Nil
-    Crystal::System::File.utime(atime, mtime, filename.to_s)
+    System::File.utime(atime, mtime, filename.to_s)
   end
 
   # Attempts to set the access and modification times of the file named
@@ -938,7 +938,7 @@ class File < IO::FileDescriptor
   # file.chown(gid: 100)
   # ```
   def chown(uid : Int = -1, gid : Int = -1) : Nil
-    Crystal::System::File.fchown(@path, fd, uid, gid)
+    System::File.fchown(@path, fd, uid, gid)
   end
 
   # Changes the permissions of the specified file.
