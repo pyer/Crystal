@@ -1,20 +1,9 @@
-{% if flag?(:use_libiconv) || flag?(:win32) || (flag?(:android) && LibC::ANDROID_API < 28) %}
-  require "./lib_iconv"
-  private USE_LIBICONV = true
-{% else %}
-  require "c/iconv"
-  private USE_LIBICONV = false
-{% end %}
+require "c/iconv"
 
 # :nodoc:
 struct Crystal::Iconv
   @skip_invalid : Bool
-
-  {% if USE_LIBICONV %}
-    @iconv : LibIconv::IconvT
-  {% else %}
-    @iconv : LibC::IconvT
-  {% end %}
+  @iconv : LibC::IconvT
 
   ERROR = LibC::SizeT::MAX # (size_t)(-1)
 
@@ -29,7 +18,7 @@ struct Crystal::Iconv
       end
     {% end %}
 
-    @iconv = {{ USE_LIBICONV ? LibIconv : LibC }}.iconv_open(to, from)
+    @iconv = LibC.iconv_open(to, from)
 
     if @iconv.address == ERROR
       if Errno.value == Errno::EINVAL
@@ -56,12 +45,7 @@ struct Crystal::Iconv
   end
 
   def convert(inbuf : UInt8**, inbytesleft : LibC::SizeT*, outbuf : UInt8**, outbytesleft : LibC::SizeT*)
-    {% if flag?(:freebsd) || flag?(:dragonfly) %}
-      if @skip_invalid
-        return LibC.__iconv(@iconv, inbuf, inbytesleft, outbuf, outbytesleft, LibC::ICONV_F_HIDE_INVALID, out invalids)
-      end
-    {% end %}
-    {{ USE_LIBICONV ? LibIconv : LibC }}.iconv(@iconv, inbuf, inbytesleft, outbuf, outbytesleft)
+    LibC.iconv(@iconv, inbuf, inbytesleft, outbuf, outbytesleft)
   end
 
   def handle_invalid(inbuf, inbytesleft)
@@ -85,7 +69,7 @@ struct Crystal::Iconv
   end
 
   def close
-    if {{ USE_LIBICONV ? LibIconv : LibC }}.iconv_close(@iconv) == -1
+    if LibC.iconv_close(@iconv) == -1
       raise RuntimeError.from_errno("iconv_close")
     end
   end
