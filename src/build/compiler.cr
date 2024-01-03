@@ -1,7 +1,7 @@
 require "option_parser"
 require "file_utils"
 require "colorize"
-require "crystal/digest/md5"
+require "digest/md5"
 require "llvm"
 
 module Crystal
@@ -42,6 +42,10 @@ module Crystal
     # that can be understood by `gdb` and `lldb`.
     property debug = Debug::Default
 
+    # If `true`, `.ll` files will be generated in the default cache
+    # directory for each generated LLVM module.
+    property? dump_ll = false
+
     # Sets the mcpu. Check LLVM docs to learn about this.
     property mcpu : String?
 
@@ -54,13 +58,26 @@ module Crystal
     # If `false`, color won't be used in output messages.
     property? color = true
 
-    # Maximum number of LLVM modules that are compiled in parallel
-    property n_threads = 8
-
     # Default prelude file to use. This ends up adding a
     # `require "prelude"` (or whatever name is set here) to
     # the source file to compile.
     property prelude = "prelude"
+
+    # Optimization mode
+    enum OptimizationMode
+      # [default] no optimization, fastest compilation, slowest runtime
+      O0 = 0
+      # low, compilation slower than O0, runtime faster than O0
+      O1 = 1
+      # middle, compilation slower than O1, runtime faster than O1
+      O2 = 2
+      # high, slowest compilation, fastest runtime
+      # enables with --release flag
+      O3 = 3
+    end
+
+    # Sets the Optimization mode.
+    property optimization_mode = OptimizationMode::O0
 
     # If `true`, runs LLVM optimizations.
     property? release = false
@@ -70,6 +87,7 @@ module Crystal
 
     # If `true`, generates a single LLVM module. By default
     # one LLVM module is created for each type in a program.
+    # --release automatically enable this option
     property? single_module = false
 
     # A `ProgressTracker` object which tracks compilation progress.
@@ -81,25 +99,6 @@ module Crystal
 
     # Warning settings and all detected warnings.
     property warnings = WarningCollection.new
-
-    @[Flags]
-    enum EmitTarget
-      ASM
-      OBJ
-      LLVM_BC
-      LLVM_IR
-    end
-
-    # Can be set to a set of flags to emit other files other
-    # than the executable file:
-    # * asm: assembly files
-    # * llvm-bc: LLVM bitcode
-    # * llvm-ir: LLVM IR
-    # * obj: object file
-    property emit_targets : EmitTarget = EmitTarget::None
-
-    # Base filename to use for `emit` output.
-    property emit_base_filename : String?
 
     # Default standard output to use in a compilation.
     property stdout : IO = STDOUT
@@ -124,12 +123,16 @@ module Crystal
     #
     # Raises `InvalidByteSequenceError` if the source code is not
     # valid UTF-8.
-    def compile(source : Source | Array(Source), output_filename : String) : Result
+    def compile_and_link(source : Source | Array(Source), output_filename : String) : Result
       source = [source] unless source.is_a?(Array)
+      if release?
+        @optimization_mode = OptimizationMode::O3
+        @single_module = true
+      end
       program = new_program(source)
       node = parse program, source
       node = program.semantic node
-      result = codegen program, node, source, output_filename
+      codegen program, node, source, output_filename
 
       @progress_tracker.clear
       print_macro_run_stats(program)
@@ -241,7 +244,7 @@ module Crystal
       output_dir = directory_for(sources)
       @progress_tracker.clear
       llvm_modules = @progress_tracker.stage("Codegen (llvm modules)") do
-        program.codegen node, debug: debug, single_module: @single_module || @release || !@emit_targets.none?
+        program.codegen node, debug: debug, single_module: @single_module || @release
       end
 
       target_triple = target_machine.triple
@@ -252,10 +255,9 @@ module Crystal
         CompilationUnit.new(self, program, type_name, llvm_mod, output_dir)
       end
 
-      result = with_file_lock(output_dir) do
+      with_file_lock(output_dir) do
         codegen program, units, output_filename, output_dir
       end
-      result
     end
 
     private def with_file_lock(output_dir, &)
@@ -275,17 +277,12 @@ module Crystal
       object_names = units.map &.object_filename
 
       target_triple = target_machine.triple
-      reused = [] of String
 
       @progress_tracker.stage("Codegen (object files)") do
         @progress_tracker.stage_progress_total = units.size
-
-        if units.size == 1
-          first_unit = units.first
-          first_unit.compile
-          first_unit.emit(@emit_targets, emit_base_filename || output_filename)
-        else
-          reused = codegen_many_units(program, units, target_triple)
+        units.each do |unit|
+          unit.compile
+          @progress_tracker.stage_progress += 1
         end
       end
 
@@ -301,76 +298,6 @@ module Crystal
           run_linker *linker_command(program, object_names, output_filename, output_dir, expand: true)
         end
       end
-
-      {units, reused}
-    end
-
-    private def codegen_many_units(program, units, target_triple)
-      all_reused = [] of String
-
-      # If threads is 1 and no stats/progress is needed we can avoid
-      # fork/spawn/channels altogether. This is particularly useful for
-      # CI because there forking eventually leads to "out of memory" errors.
-      if @n_threads == 1
-        units.each do |unit|
-          unit.compile
-          all_reused << unit.name if @progress_tracker.progress? && unit.reused_previous_compilation?
-        end
-        return all_reused
-      end
-
-      {% if !Crystal::System::Process.class.has_method?("fork") %}
-        raise "Cannot fork compiler. `Crystal::System::Process.fork` is not implemented on this system."
-      {% else %}
-        jobs_count = 0
-        wait_channel = Channel(Array(String)).new(@n_threads)
-
-        units.each_slice(Math.max(units.size // @n_threads, 1)) do |slice|
-          jobs_count += 1
-          spawn do
-            # For stats output we want to count how many previous
-            # .o files were reused, mainly to detect performance regressions.
-            # Because we fork, we must communicate using a pipe.
-            reused = [] of String
-            if @progress_tracker.progress?
-              pr, pw = IO.pipe
-              spawn do
-                pr.each_line do |line|
-                  unit = JSON.parse(line)
-                  reused << unit["name"].as_s if unit["reused"].as_bool
-                  @progress_tracker.stage_progress += 1
-                end
-              end
-            end
-
-            codegen_process = Crystal::System::Process.fork do
-              pipe_w = pw
-              slice.each do |unit|
-                unit.compile
-                if pipe_w
-                  unit_json = {name: unit.name, reused: unit.reused_previous_compilation?}.to_json
-                  pipe_w.puts unit_json
-                end
-              end
-            end
-            Process.new(codegen_process).wait
-
-            if pipe_w = pw
-              pipe_w.close
-              Fiber.yield
-            end
-
-            wait_channel.send reused
-          end
-        end
-
-        jobs_count.times do
-          reused = wait_channel.receive
-          all_reused.concat(reused)
-        end
-
-        all_reused
-      {% end %}
     end
 
     private def print_macro_run_stats(program)
@@ -458,16 +385,33 @@ module Crystal
           registry.initialize_all
 
           builder = LLVM::PassManagerBuilder.new
-          builder.opt_level = 3
+          case optimization_mode
+          in .o3?
+            builder.opt_level = 3
+            builder.use_inliner_with_threshold = 275
+          in .o2?
+            builder.opt_level = 2
+            builder.use_inliner_with_threshold = 275
+          in .o1?
+            builder.opt_level = 1
+            builder.use_inliner_with_threshold = 150
+          in .o0?
+            # default behaviour, no optimizations
+          end
           builder.size_level = 0
-          builder.use_inliner_with_threshold = 275
           builder
         end
       end
     {% else %}
       protected def optimize(llvm_mod)
         LLVM::PassBuilderOptions.new do |options|
-          LLVM.run_passes(llvm_mod, "default<O3>", target_machine, options)
+          mode = case @optimization_mode
+                 in .o3? then "default<O3>"
+                 in .o2? then "default<O2>"
+                 in .o1? then "default<O1>"
+                 in .o0? then "default<O0>"
+                 end
+          LLVM.run_passes(llvm_mod, mode, target_machine, options)
         end
       end
     {% end %}
@@ -526,7 +470,6 @@ module Crystal
       getter name
       getter original_name
       getter llvm_mod
-      getter? reused_previous_compilation = false
       getter object_extension = ".o"
 
       def initialize(@compiler : Compiler, program : Program, @name : String,
@@ -550,15 +493,11 @@ module Crystal
 
         if @name.size > 50
           # 17 chars from name + 1 (dash) + 32 (md5) = 50
-          @name = "#{@name[0..16]}-#{::Crystal::Digest::MD5.hexdigest(@name)}"
+          @name = "#{@name[0..16]}-#{Digest::MD5.hexdigest(@name)}"
         end
       end
 
       def compile
-        compile_to_object
-      end
-
-      private def compile_to_object
         bc_name = self.bc_name
         object_name = self.object_name
         temporary_object_name = self.temporary_object_name
@@ -586,22 +525,11 @@ module Crystal
           memory_buffer.dispose
         end
 
-        compiler.optimize llvm_mod if compiler.release?
+        compiler.optimize llvm_mod unless compiler.optimization_mode.o0?
         compiler.target_machine.emit_obj_to_file llvm_mod, temporary_object_name
         File.rename(temporary_object_name, object_name)
-      end
 
-      def emit(emit_targets : EmitTarget, output_filename)
-        puts "\n#{emit_targets.to_s}\n"
-        if emit_targets.asm?
-          compiler.target_machine.emit_asm_to_file llvm_mod, "#{output_filename}.s"
-        end
-        if emit_targets.llvm_bc?
-          FileUtils.cp(bc_name, "#{output_filename}.bc")
-        end
-        if emit_targets.obj?
-          FileUtils.cp(object_name, output_filename + @object_extension)
-        end
+        llvm_mod.print_to_file ll_name if compiler.dump_ll?
       end
 
       def object_name

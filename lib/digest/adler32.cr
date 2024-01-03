@@ -1,5 +1,5 @@
 require "lib_z"
-require "./digest"
+require "digest"
 
 # Implements the Adler32 checksum algorithm.
 #

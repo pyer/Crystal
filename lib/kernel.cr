@@ -1,8 +1,5 @@
-require "crystal/at_exit_handlers"
-
-{% unless flag?(:win32) %}
-  require "c/unistd"
-{% end %}
+require "kernel/at_exit_handlers"
+require "c/unistd"
 
 # The standard input file descriptor. Contains data piped to the program.
 STDIN = IO::FileDescriptor.from_stdio(0)
@@ -513,7 +510,7 @@ end
 # right after the current `at_exit` handler ends, and then other handlers
 # will be invoked.
 def at_exit(&handler : Int32, Exception? ->) : Nil
-  Crystal::AtExitHandlers.add(handler)
+  Kernel::AtExitHandlers.add(handler)
 end
 
 # Terminates execution immediately, returning the given status code
@@ -521,7 +518,7 @@ end
 #
 # Registered `at_exit` procs are executed.
 def exit(status = 0) : NoReturn
-  status = Crystal::AtExitHandlers.run status
+  status = Kernel::AtExitHandlers.run status
   Main.ignore_stdio_errors { STDOUT.flush }
   Main.ignore_stdio_errors { STDERR.flush }
   Process.exit(status)

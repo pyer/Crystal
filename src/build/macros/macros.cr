@@ -102,7 +102,7 @@ class Crystal::Program
     # No need to generate debug info for macro run programs
     compiler.debug = Crystal::Debug::None
     # Compile the macro
-    result = compiler.compile Compiler::Source.new(filename, source), executable_path
+    result = compiler.compile_and_link Compiler::Source.new(filename, source), executable_path
 
     # Write the new files from which 'filename' depends into the cache dir
     # (here we store how to obtain these files, because a require might use

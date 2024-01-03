@@ -1,4 +1,4 @@
-require "./digest"
+require "digest"
 require "openssl/digest"
 
 # Implements the SHA512 digest algorithm.

@@ -1,5 +1,5 @@
 # :nodoc:
-module Crystal::AtExitHandlers
+module Kernel::AtExitHandlers
   private class_getter(handlers) { [] of Int32, ::Exception? -> }
 
   def self.add(handler)

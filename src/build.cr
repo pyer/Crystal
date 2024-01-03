@@ -1,7 +1,7 @@
 # This is the main file that is compiled to generate the executable for the compiler.
 
 module Build
-  VERSION      = "2.0.1"
+  VERSION      = "2.0.2"
   LLVM_VERSION = "12.0.1"
   TARGET       = "x86_64-linux-gnu"
   PATH         = "/usr/lib/build"
@@ -55,7 +55,7 @@ quiet = false;
         compiler.paths << path
       end
 
-      opts.on("-o ", "--output ", "Output filename") do |an_output_filename|
+      opts.on("-o", "--output ", "Output filename") do |an_output_filename|
           output_filename = an_output_filename
       end
       opts.on("-p", "--progress", "Enable progress output") do
@@ -108,6 +108,6 @@ source_filenames.each do |filename|
 
     # Let's go
     puts "Compiling #{source_name} to #{output_filename}" unless quiet
-    compiler.compile source, output_filename
+    compiler.compile_and_link source, output_filename
 end
 puts "Elapsed time : #{compiler.progress_tracker.elapsed_time}" unless quiet

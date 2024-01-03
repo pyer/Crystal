@@ -1,6 +1,6 @@
 require "./lib_crypto"
 require "./error"
-require "digest/digest"
+require "../digest"
 
 module OpenSSL
   class Digest < ::Digest

@@ -2,11 +2,7 @@ require "socket"
 require "http/client"
 require "http/headers"
 require "base64"
-{% if flag?(:without_openssl) %}
-  require "crystal/digest/sha1"
-{% else %}
-  require "openssl/sha1"
-{% end %}
+require "openssl/sha1"
 require "uri"
 
 # :nodoc:
@@ -353,10 +349,6 @@ class HTTP::WebSocket::Protocol
   end
 
   def self.key_challenge(key)
-    {% if flag?(:without_openssl) %}
-      ::Crystal::Digest::SHA1.base64digest(key + GUID)
-    {% else %}
-      Base64.strict_encode(OpenSSL::SHA1.hash(key + GUID))
-    {% end %}
+    Base64.strict_encode(OpenSSL::SHA1.hash(key + GUID))
   end
 end

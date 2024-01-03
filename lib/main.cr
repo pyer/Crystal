@@ -8,7 +8,7 @@ module Main
 
   # :nodoc:
   def self.exit(status : Int32, exception : Exception?) : Int32
-    status = Crystal::AtExitHandlers.run status, exception
+    status = Kernel::AtExitHandlers.run status, exception
 
     if exception
       STDERR.print "Unhandled exception: "

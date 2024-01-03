@@ -1,4 +1,4 @@
-require "./digest"
+#require "digest"
 require "openssl/digest"
 
 # Implements the MD5 digest algorithm.
@@ -9,7 +9,7 @@ require "openssl/digest"
 # used in security-related components, like password hashing. For passwords, see
 # `Crypto::Bcrypt::Password`. For a generic cryptographic hash, use SHA-256 via
 # `Digest::SHA256`.
-class Digest::MD5 < ::OpenSSL::Digest
+class Digest::MD5 < OpenSSL::Digest
   extend ClassMethods
 
   def initialize
