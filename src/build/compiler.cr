@@ -42,10 +42,6 @@ module Crystal
     # that can be understood by `gdb` and `lldb`.
     property debug = Debug::Default
 
-    # If `true`, `.ll` files will be generated in the default cache
-    # directory for each generated LLVM module.
-    property? dump_ll = false
-
     # Sets the mcpu. Check LLVM docs to learn about this.
     property mcpu : String?
 
@@ -529,7 +525,7 @@ module Crystal
         compiler.target_machine.emit_obj_to_file llvm_mod, temporary_object_name
         File.rename(temporary_object_name, object_name)
 
-        llvm_mod.print_to_file ll_name if compiler.dump_ll?
+        llvm_mod.print_to_file ll_name unless compiler.debug.none?
       end
 
       def object_name
