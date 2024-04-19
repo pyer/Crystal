@@ -766,42 +766,16 @@ module Crystal
       #     a = temp[0]
       #     b = temp[1]
       #
-      # If the flag "strict_multi_assign" is present, requires `temp`'s size to
-      # match the number of assign targets exactly: (it must respond to `#size`)
-      #
-      #     temp = [1, 2]
-      #     raise ... if temp.size != 2
-      #     a = temp[0]
-      #     b = temp[1]
-      #
-      # From:
-      #
-      #     a, *b, c, d = [1, 2]
-      #
-      # To:
-      #
-      #     temp = [1, 2]
-      #     raise ... if temp.size < 3
-      #     a = temp[0]
-      #     b = temp[1..-3]
-      #     c = temp[-2]
-      #     d = temp[-1]
-      #
-      # Except any assignments to *_, including the indexing call, are omitted
-      # altogether.
       if node.values.size == 1
         value = node.values[0]
         middle_splat = splat_index && (0 < splat_index < node.targets.size - 1)
-        raise_on_count_mismatch = @program.has_flag?("strict_multi_assign") || middle_splat
-
         temp_var = new_temp_var
 
         # temp = ...
-        assigns = Array(ASTNode).new(node.targets.size + (splat_underscore ? 0 : 1) + (raise_on_count_mismatch ? 1 : 0))
+        assigns = Array(ASTNode).new(node.targets.size + (splat_underscore ? 0 : 1) + 1)
         assigns << Assign.new(temp_var.clone, value).at(value)
 
         # raise ... if temp.size < ...
-        if raise_on_count_mismatch
           size_call = Call.new(temp_var.clone, "size").at(value)
           if middle_splat
             size_comp = Call.new(size_call, "<", NumberLiteral.new(node.targets.size - 1)).at(value)
@@ -811,7 +785,6 @@ module Crystal
           index_error = Call.new(Path.global("IndexError"), "new", StringLiteral.new("Multiple assignment count mismatch")).at(value)
           raise_call = Call.global("raise", index_error).at(value)
           assigns << If.new(size_comp, raise_call).at(value)
-        end
 
         # ... = temp[...]
         node.targets.each_with_index do |target, i|

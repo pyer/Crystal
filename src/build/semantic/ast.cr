@@ -653,7 +653,7 @@ module Crystal
                    ArrayLiteral HashLiteral RegexLiteral RangeLiteral
                    Case StringInterpolation
                    MacroExpression MacroIf MacroFor MacroVerbatim MultiAssign
-                   SizeOf InstanceSizeOf OffsetOf Global Require Select) %}
+                   SizeOf InstanceSizeOf AlignOf InstanceAlignOf OffsetOf Global Require Select) %}
     class {{name.id}}
       include ExpandableNode
     end
@@ -689,6 +689,7 @@ module Crystal
     property real_name : String
     property! fun_def : FunDef
     property call_convention : LLVM::CallConvention?
+    property wasm_import_module : String?
 
     property? dead = false
     property? used = false

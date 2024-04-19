@@ -11,7 +11,9 @@ module Crystal
     def cleanup(node, inside_def = false)
       transformer = self.cleanup_transformer
       transformer.inside_def! if inside_def
-      node.transform(transformer)
+      node = node.transform(transformer)
+      puts node if ENV["AFTER"]? == "1"
+      node
     end
 
     def cleanup_types
@@ -379,31 +381,28 @@ module Crystal
         temp_assign = expanded.as(Expressions).expressions.first
         type = temp_assign.type
         target_count = node.targets.size
-        has_strict_multi_assign = @program.has_flag?("strict_multi_assign")
 
         # disallows `a, *b, c = {0 => "x", 1 => "y", 2 => "z"}`, as `Hash` is
         # not `Indexable`
         # also disallows `a, b, c = ...` if the strict flag is set
-        if node.targets.any?(Splat) || has_strict_multi_assign
+        if node.targets.any?(Splat)
           unless type.implements?(@program.indexable)
             node.values.first.raise "right-hand side of one-to-many assignment must be an Indexable, not #{type}"
           end
         end
 
-        if has_strict_multi_assign
-          case type
-          when UnionType
+        case type
+        when UnionType
             sizes = type.union_types.map { |union_type| constant_size(union_type) }
             if sizes.none? &.in?(target_count, nil)
               node.values.first.raise "cannot assign #{type} to #{target_count} targets"
             end
-          else
+        else
             if size = constant_size(type)
               unless size == target_count
                 node.values.first.raise "cannot assign #{type} to #{target_count} targets"
               end
             end
-          end
         end
       end
 
@@ -633,10 +632,12 @@ module Crystal
         if @a_def.vars.try &.[node.name]?.try &.closured?
           @vars << node
         end
+        false
       end
 
       def visit(node : InstanceVar)
         @vars << node
+        false
       end
 
       def visit(node : ASTNode)
@@ -1001,6 +1002,23 @@ module Crystal
       node
     end
 
+    def transform(node : InstanceAlignOf)
+      exp_type = node.exp.type?
+
+      if exp_type
+        instance_type = exp_type.devirtualize
+        if instance_type.struct? || instance_type.module? || instance_type.metaclass? || instance_type.is_a?(UnionType)
+          node.exp.raise "instance_alignof can only be used with a class, but #{instance_type} is a #{instance_type.type_desc}"
+        end
+      end
+
+      if expanded = node.expanded
+        return expanded.transform self
+      end
+
+      node
+    end
+
     def transform(node : TupleLiteral)
       super
 
@@ -1057,7 +1075,7 @@ module Crystal
       # For `allocate` on a virtual abstract type we make `extra`
       # be a call to `raise` at runtime. Here we just replace the
       # "allocate" primitive with that raise call.
-      if node.name == "allocate" && extra
+      if node.name.in?("allocate", "pre_initialize") && extra
         return extra
       end
 

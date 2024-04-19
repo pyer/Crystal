@@ -471,8 +471,7 @@ module Crystal
       end
     end
 
-    # Finds *filename* in the configured CRYSTAL_PATH for this program,
-    # relative to *relative_to*.
+    # Finds *filename* in the compiler.paths for this program, relative to *relative_to*.
     def find_in_path(filename, relative_to = nil) : Array(String)?
       crystal_path = CrystalPath.new(paths)
       crystal_path.find_file filename, relative_to

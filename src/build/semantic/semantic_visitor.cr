@@ -97,7 +97,7 @@ abstract class Crystal::SemanticVisitor < Crystal::Visitor
     rescue ex : CodeError
       node.raise "while requiring \"#{node.string}\"", ex
     rescue ex
-      raise Error.new "while requiring \"#{node.string}\"", ex
+      raise Exception.new "while requiring \"#{node.string}\"", ex
     end
 
     FileNode.new(parsed_nodes, filename)

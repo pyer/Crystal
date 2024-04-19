@@ -67,10 +67,6 @@ module Crystal
     # * `0` if `self` and *other* are equivalent defs;
     # * `nil` if neither def is stricter than the other.
     def compare_strictness(other : DefWithMetadata, self_owner, *, other_owner = self_owner)
-      unless self_owner.program.has_flag?("preview_overload_order")
-        return compare_strictness_old(other, self_owner, other_owner: other_owner)
-      end
-
       # If one yields and the other doesn't, neither is stricter than the other
       return nil unless self.yields == other.yields
 

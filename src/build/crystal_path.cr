@@ -1,8 +1,8 @@
-require "./error"
+#require "./error"
 
 module Crystal
   struct CrystalPath
-    class NotFoundError < Crystal::Error
+    class NotFoundError < ::Exception
       getter filename
       getter relative_to
 

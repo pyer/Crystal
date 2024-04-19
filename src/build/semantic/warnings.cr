@@ -41,7 +41,7 @@ module Crystal
       if (ann = object.annotation(self.deprecated_annotation)) &&
          (deprecated_annotation = DeprecatedAnnotation.from(ann))
         use_location = use_site.location.try(&.macro_location) || use_site.location
-        return if !use_location
+        return if !use_location || @warnings.ignore_warning_due_to_location?(use_location)
 
         # skip warning if the use site was already informed
         name = object.short_reference
@@ -76,7 +76,7 @@ module Crystal
     def short_reference
       case owner
       when Program
-        "top-level #{name}"
+        "::#{name}"
       when MetaclassType
         "#{owner.instance_type.to_s(generic_args: false)}.#{name}"
       else
@@ -122,7 +122,7 @@ module Crystal
     def short_reference
       case owner
       when Program
-        "top-level #{name}"
+        "::#{name}"
       when .metaclass?
         "#{owner.instance_type}.#{name}"
       else

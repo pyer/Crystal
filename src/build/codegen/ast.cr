@@ -61,7 +61,7 @@ module Crystal
         end
       end
 
-      name
+      Crystal.safe_mangling(program, name)
     end
 
     def varargs?
@@ -136,6 +136,12 @@ module Crystal
       end
 
       found_extern
+    end
+  end
+
+  class Asm
+    def dialect : LLVM::InlineAsmDialect
+      intel? ? LLVM::InlineAsmDialect::Intel : LLVM::InlineAsmDialect::ATT
     end
   end
 end

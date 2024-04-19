@@ -69,8 +69,10 @@ module Crystal
       end
     end
 
-    def codegen(node, single_module = false, debug = Debug::Default)
-      visitor = CodeGenVisitor.new self, node, single_module: single_module, debug: debug
+    def codegen(node, single_module = false, debug = Debug::Default,
+                frame_pointers = FramePointers::Auto)
+      visitor = CodeGenVisitor.new self, node, single_module: single_module,
+        debug: debug, frame_pointers: frame_pointers
       visitor.accept node
       visitor.process_finished_hooks
       visitor.finish
@@ -91,7 +93,7 @@ module Crystal
         # We need `sizeof(Void)` to be 1 because doing
         # `Pointer(Void).malloc` must work like `Pointer(UInt8).malloc`,
         # that is, consider Void like the size of a byte.
-        1
+        1_u64
       else
         llvm_typer.size_of(llvm_typer.llvm_type(type))
       end
@@ -99,6 +101,20 @@ module Crystal
 
     def instance_size_of(type)
       llvm_typer.size_of(llvm_typer.llvm_struct_type(type))
+    end
+
+    def align_of(type)
+      if type.void?
+        # We need `alignof(Void)` to be 1 because it is effectively the smallest
+        # possible alignment for any type.
+        1_u32
+      else
+        llvm_typer.align_of(llvm_typer.llvm_type(type))
+      end
+    end
+
+    def instance_align_of(type)
+      llvm_typer.align_of(llvm_typer.llvm_struct_type(type))
     end
 
     def offset_of(type, element_index)
@@ -176,7 +192,10 @@ module Crystal
     @c_malloc_fun : LLVMTypedFunction?
     @c_realloc_fun : LLVMTypedFunction?
 
-    def initialize(@program : Program, @node : ASTNode, @single_module : Bool = false, @debug = Debug::Default)
+    def initialize(@program : Program, @node : ASTNode,
+                   @single_module : Bool = false,
+                   @debug = Debug::Default,
+                   @frame_pointers : FramePointers = :auto)
       @abi = @program.target_machine.abi
       @llvm_context = LLVM::Context.new
       # LLVM::Context.register(@llvm_context, "main")
@@ -255,7 +274,7 @@ module Crystal
 
       # We need to define __crystal_malloc and __crystal_realloc as soon as possible,
       # to avoid some memory being allocated with plain malloc.
-      codgen_well_known_functions @node
+      codegen_well_known_functions @node
 
       initialize_predefined_constants
 
@@ -359,7 +378,7 @@ module Crystal
       end
     end
 
-    def codgen_well_known_functions(node)
+    def codegen_well_known_functions(node)
       visitor = CodegenWellKnownFunctions.new(self)
       node.accept visitor
     end
@@ -387,9 +406,21 @@ module Crystal
         codegen_fun node.real_name, node.external, @program, is_exported_fun: true
       end
 
+      env_dump = ENV["DUMP"]?
+      case env_dump
+      when Nil
+        # Nothing
+      when "1"
+        dump_all_llvm = true
+      else
+        dump_llvm_regex = Regex.new(env_dump)
+      end
+
       @modules.each do |name, info|
         mod = info.mod
         push_debug_info_metadata(mod) unless @debug.none?
+
+        mod.dump if dump_all_llvm || name =~ dump_llvm_regex
 
         # Always run verifications so we can catch bugs earlier and more often.
         # We can probably remove this, or only enable this when compiling in
@@ -397,6 +428,29 @@ module Crystal
         mod.verify
       end
 
+      dump_type_id if ENV["CRYSTAL_DUMP_TYPE_ID"]? == "1"
+    end
+
+    private def dump_type_id
+      ids = @program.llvm_id.@ids.to_a
+      ids.sort_by! { |_, (min, max)| {min, -max} }
+
+      puts "CRYSTAL_DUMP_TYPE_ID"
+      parent_ids = [] of {Int32, Int32}
+      ids.each do |type, (min, max)|
+        while parent_id = parent_ids.last?
+          break if min >= parent_id[0] && max <= parent_id[1]
+          parent_ids.pop
+        end
+        indent = " " * (2 * parent_ids.size)
+
+        show_generic_args = type.is_a?(GenericInstanceType) ||
+                            type.is_a?(GenericClassInstanceMetaclassType) ||
+                            type.is_a?(GenericModuleInstanceMetaclassType)
+        puts "#{indent}{#{min} - #{max}}: #{type.to_s(generic_args: show_generic_args)}"
+        parent_ids << {min, max}
+      end
+      puts
     end
 
     def visit(node : Annotation)
@@ -447,18 +501,22 @@ module Crystal
 
     def visit(node : Nop)
       @last = llvm_nil
+      false
     end
 
     def visit(node : NilLiteral)
       @last = llvm_nil
+      false
     end
 
     def visit(node : BoolLiteral)
       @last = int1(node.value ? 1 : 0)
+      false
     end
 
     def visit(node : CharLiteral)
       @last = int32(node.value.ord)
+      false
     end
 
     def visit(node : NumberLiteral)
@@ -488,14 +546,17 @@ module Crystal
       in .f64?
         @last = float64(node.value)
       end
+      false
     end
 
     def visit(node : StringLiteral)
       @last = build_string_constant(node.value, node.value)
+      false
     end
 
     def visit(node : SymbolLiteral)
       @last = int(@symbols[node.value])
+      false
     end
 
     def visit(node : TupleLiteral)
@@ -618,7 +679,7 @@ module Crystal
       if location && (type = node.type?)
         proc_name = true
         filename = location.filename.as(String)
-        fun_literal_name = "~proc#{type}@#{Crystal.relative_filename(filename)}:#{location.line_number}"
+        fun_literal_name = Crystal.safe_mangling(@program, "~proc#{type}@#{Crystal.relative_filename(filename)}:#{location.line_number}")
       else
         proc_name = false
         fun_literal_name = "~fun_literal"
@@ -786,6 +847,16 @@ module Crystal
 
     def visit(node : InstanceSizeOf)
       @last = trunc(llvm_struct_size(node.exp.type.sizeof_type), llvm_context.int32)
+      false
+    end
+
+    def visit(node : AlignOf)
+      @last = trunc(llvm_alignment(node.exp.type.sizeof_type), llvm_context.int32)
+      false
+    end
+
+    def visit(node : InstanceAlignOf)
+      @last = trunc(llvm_struct_alignment(node.exp.type.sizeof_type), llvm_context.int32)
       false
     end
 
@@ -1028,7 +1099,7 @@ module Crystal
 
       request_value(value)
 
-      return if value.no_returns?
+      return false if value.no_returns?
 
       last = @last
 
@@ -1042,7 +1113,7 @@ module Crystal
               read_class_var_ptr(target)
             when Var
               # Can't assign void
-              return if target.type.void?
+              return false if target.type.void?
 
               # If assigning to a special variable in a method that yields,
               # assign to that variable too.
@@ -1220,6 +1291,7 @@ module Crystal
       else
         node.raise "BUG: missing context var: #{node.name}"
       end
+      false
     end
 
     def visit(node : Global)
@@ -1228,6 +1300,7 @@ module Crystal
 
     def visit(node : ClassVar)
       @last = read_class_var(node)
+      false
     end
 
     def visit(node : InstanceVar)
@@ -1339,7 +1412,7 @@ module Crystal
 
       unless filtered_type
         @last = upcast llvm_nil, resulting_type, @program.nil
-        return
+        return false
       end
 
       non_nilable_type = node.non_nilable_type
@@ -1412,12 +1485,15 @@ module Crystal
 
     def codegen_type_filter(node, &)
       accept node.obj
-      obj_type = node.obj.type
 
-      type_id = type_id @last, obj_type
-      filtered_type = yield(obj_type).not_nil!
+      if @needs_value
+        obj_type = node.obj.type
 
-      @last = match_type_id obj_type, filtered_type, type_id
+        type_id = type_id @last, obj_type
+        filtered_type = yield(obj_type).not_nil!
+
+        @last = match_type_id obj_type, filtered_type, type_id
+      end
 
       false
     end
@@ -1441,7 +1517,7 @@ module Crystal
       unless var
         var = llvm_mod.globals.add(llvm_c_return_type(type), name)
         var.linkage = LLVM::Linkage::External
-        if @program.has_flag?("win32") && @program.has_flag?("preview_dll")
+        if @program.has_flag?("win32") && !@program.has_flag?("static")
           var.dll_storage_class = LLVM::DLLStorageClass::DLLImport
         end
         var.thread_local = thread_local
@@ -1597,6 +1673,7 @@ module Crystal
 
     def visit(node : Unreachable)
       builder.unreachable
+      false
     end
 
     def check_proc_is_not_closure(value, type)
@@ -1948,8 +2025,41 @@ module Crystal
       call c_printf_fun, [builder.global_string_pointer(format)] + args
     end
 
+    # Emits a debug message that shows the current llvm basic block name,
+    # the location within the codegen that was used to emit this log.
+    #
+    # The message is only generated if `CRYSTAL_DEBUG_CODEGEN` is set
+    #
+    # The block given to this method should yield `printf` arguments to show
+    # additional information. The following forms are all valid and helps to
+    # allocate the arguments only if the message is to be generated.
+    #
+    # ```
+    # debug_codegen_log
+    # debug_codegen_log { }
+    # debug_codegen_log { "Lorem" }
+    # debug_codegen_log { {"Lorem"} }
+    # debug_codegen_log { {"Lorem %d", [an_int_llvm_value] of LLVM::Value} }
+    # ```
+    #
+    def debug_codegen_log(file = __FILE__, line = __LINE__, &)
+      return unless ENV["CRYSTAL_DEBUG_CODEGEN"]?
+      printf_args = yield || ""
+      printf_args = {printf_args, [] of LLVM::Value} if printf_args.is_a?(String)
+      printf_args = {printf_args[0], [] of LLVM::Value} if printf_args.is_a?({String})
+      msg, args = printf_args
+      printf("<block: #{insert_block.name || "???"} @ #{Crystal.relative_filename(file)}:#{line}> #{msg}\n", args)
+    end
+
+    # :ditto:
+    def debug_codegen_log(file = __FILE__, line = __LINE__)
+      debug_codegen_log(file, line) { }
+    end
+
     def unreachable(file = __FILE__, line = __LINE__)
+      debug_codegen_log(file, line) { "Reached the unreachable!" }
       builder.unreachable
+      false
     end
 
     def allocate_aggregate(type)
@@ -1965,15 +2075,19 @@ module Crystal
         end
       end
 
-      memset type_ptr, int8(0), struct_type.size
-      run_instance_vars_initializers(type, type, type_ptr)
+      pre_initialize_aggregate(type, struct_type, type_ptr)
+    end
+
+    def pre_initialize_aggregate(type, struct_type, ptr)
+      memset ptr, int8(0), struct_type.size
+      run_instance_vars_initializers(type, type, ptr)
 
       unless type.struct?
-        type_id_ptr = aggregate_index(struct_type, type_ptr, 0)
+        type_id_ptr = aggregate_index(struct_type, ptr, 0)
         store type_id(type), type_id_ptr
       end
 
-      @last = type_ptr
+      @last = ptr
     end
 
     def allocate_tuple(type, &)
@@ -2012,7 +2126,7 @@ module Crystal
           context.vars = LLVMVars.new
           alloca_vars init.meta_vars
 
-          accept init.value
+          request_value(init.value)
 
           ivar_ptr = instance_var_ptr real_type, init.name, type_ptr
           assign ivar_ptr, ivar.type, init.value.type, @last
@@ -2093,7 +2207,7 @@ module Crystal
       if raise_overflow_fun = @raise_overflow_fun
         check_main_fun RAISE_OVERFLOW_NAME, raise_overflow_fun
       else
-        raise Error.new("Missing __crystal_raise_overflow function, either use std-lib's prelude or define it")
+        raise Exception.new("Missing __crystal_raise_overflow function, either use std-lib's prelude or define it")
       end
     end
 
@@ -2139,11 +2253,11 @@ module Crystal
       res
     end
 
-    def memcpy(dest, src, len, align, volatile)
+    def memcpy(dest, src, len, align, volatile, *, src_align = align)
       res = call c_memcpy_fun, [dest, src, len, volatile]
 
       LibLLVM.set_instr_param_alignment(res, 1, align)
-      LibLLVM.set_instr_param_alignment(res, 2, align)
+      LibLLVM.set_instr_param_alignment(res, 2, src_align)
 
       res
     end
@@ -2304,6 +2418,23 @@ module Crystal
     end
   end
 
+  def self.safe_mangling(program, name)
+    if program.has_flag?("windows")
+      String.build do |str|
+        name.each_char do |char|
+          if char.ascii_alphanumeric? || char == '_'
+            str << char
+          else
+            str << '.'
+            char.ord.to_s(str, 16, upcase: true)
+            str << '.'
+          end
+        end
+      end
+    else
+      name
+    end
+  end
 end
 
 require "./*"

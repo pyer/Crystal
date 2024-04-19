@@ -15,20 +15,22 @@ module Crystal
     filename
   end
 
-  def self.error(msg) : NoReturn
-    # This is for the case where the main command is wrong
-    STDERR.print "Error: #{msg}\n"
-    exit(1)
-  end
-
   def self.error(msg, color, exit_code : Int = 1, stderr = STDERR, leading_error = true) : NoReturn
-    error(msg, color, exit_code, stderr, leading_error)
+    error(msg, color, nil, stderr, leading_error)
     exit(exit_code)
   end
 
   def self.error(msg, color, exit_code : Nil, stderr = STDERR, leading_error = true)
     stderr.print "Error: ".colorize.toggle(color).red.bold if leading_error
     stderr.puts msg.colorize.toggle(color).bright
+  end
+
+  def self.temp_executable(basename)
+    name = tempfile(basename)
+    {% if flag?(:win32) %}
+      name += ".exe"
+    {% end %}
+    name
   end
 
   def self.with_line_numbers(
@@ -59,4 +61,9 @@ module Crystal
     end.join '\n'
   end
 
+  def self.normalize_path(path)
+    path = ::Path[path].normalize
+    path = ::Path["."] / path unless path.anchor
+    path.to_s
+  end
 end

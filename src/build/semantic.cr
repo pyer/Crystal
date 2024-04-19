@@ -1,6 +1,7 @@
 require "./program"
 require "./syntax/ast"
 require "./syntax/visitor"
+
 require "./semantic/*"
 
 # The overall algorithm for semantic analysis of a program is:

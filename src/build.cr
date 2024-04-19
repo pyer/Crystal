@@ -2,13 +2,25 @@
 
 module Build
   VERSION      = "2.0.2"
-  LLVM_VERSION = "12.0.1"
+  # LLVM_VERSION = {{ `llvm-config --version` }}
+  LLVM_VERSION = "17.0.6"
   TARGET       = "x86_64-linux-gnu"
-  PATH         = "/usr/lib/build"
+  # PATH         = "/usr/lib/build"
+  PATH_SRC       = "/usr/share/crystal/src"
+  PATH_LIB       = "/usr/share/crystal/src/lib_c/x86_64-linux-gnu"
   BUILD_DATE   = {{ `date +'"%Y-%m-%d %H:%M:%S"'` }}
 end
 
-require "./build/**"
+require "json"
+
+require "./build/annotatable"
+require "./build/codegen/*"
+require "./build/compiler"
+require "./build/crystal_path"
+require "./build/macros"
+require "./build/program"
+require "./build/progress_tracker"
+require "./build/syntax"
 
 source_filenames = [] of String
 output_filename  = ""
@@ -24,7 +36,7 @@ quiet = false;
     compiler.flags = Build::TARGET.split("-")
     compiler.flags << "unix"
     compiler.flags << "bits64"
-    compiler.paths = [Build::PATH]
+    compiler.paths = [Build::PATH_SRC, Build::PATH_LIB]
     compiler.single_module = false
     compiler.static = false
 
@@ -90,10 +102,10 @@ unless quiet
 end
 
 # Check arguments
-Crystal.error "Source file absent" if source_filenames.size == 0
+Exception.new "Source file absent" if source_filenames.size == 0
 
 source_filenames.each do |filename|
-    Crystal.error "File '#{filename}' not found" unless File.file?(filename)
+    Exception.new "File '#{filename}' not found" unless File.file?(filename)
     source_name = File.expand_path(filename)
     source = Crystal::Compiler::Source.new(filename, File.read(filename))
 
@@ -101,10 +113,10 @@ source_filenames.each do |filename|
       file_ext = File.extname(source_name)
       output_filename = File.basename(source_name, file_ext)
     end
-    Crystal.error "Can't use '#{output_filename}' as output filename because it's a directory" if Dir.exists?(output_filename)
+    Exception.new "Can't use '#{output_filename}' as output filename because it's a directory" if Dir.exists?(output_filename)
 
     # Check if we'll overwrite the main source file
-    Crystal.error "Compilation will overwrite source file '#{source_name}'" if source_name == File.expand_path(output_filename)
+    Exception.new "Compilation will overwrite source file '#{source_name}'" if source_name == File.expand_path(output_filename)
 
     # Let's go
     puts "Compiling #{source_name} to #{output_filename}" unless quiet

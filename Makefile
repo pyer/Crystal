@@ -15,14 +15,14 @@
 ## Run compiler tests
 ##   $ make compiler_spec
 
-#export CRYSTAL_CACHE_DIR := cache
-export CRYSTAL_PATH      := src:lib
-#export CRYSTAL_LIBRARY_PATH := lib
+# C compiler
+CC = "gcc"
 
 # llvm-config command path to use
-LLVM_CXXFLAGS := $(shell llvm-config-12 --cxxflags)
-LLVM_EXT_SRC := lib/llvm/ext/llvm_ext.cc
-LLVM_EXT_OBJ := lib/llvm/ext/llvm_ext.o
+LLVM_VERSION  := $(shell llvm-config --version)
+LLVM_CXXFLAGS := $(shell llvm-config --cxxflags)
+LLVM_EXT_SRC  := /usr/share/crystal/src/llvm/ext/llvm_ext.cc
+LLVM_EXT_OBJ  := /usr/share/crystal/src/llvm/ext/llvm_ext.o
 
 release ?=      ## Compile in release mode
 progress = 1    ## Enable progress output
@@ -31,11 +31,6 @@ debug ?=        ## Add symbolic debug info
 verbose ?=      ## Run specs in verbose mode
 static ?=       ## Enable static linking
 order ?=random  ## Enable order for spec execution (values: "default" | "random" | seed number)
-
-FLAGS := -D strict_multi_assign -D preview_overload_order --progress
-
-#CC = "cc -fuse-ld=lld -l$(LLVM_EXT_OBJ)"
-CXXFLAGS += $(if $(debug),-g -O0)
 
 .PHONY: all
 all: build
@@ -66,17 +61,18 @@ hello:
 
 .PHONY: build
 build: $(LLVM_EXT_OBJ) ## Build the compiler
-	build $(FLAGS) -o $@ src/build.cr
+	build --progress -o $@ src/build.cr
 	mv build $(HOME)/bin/
 
 .PHONY: crystal
 crystal: $(LLVM_EXT_OBJ) ## Build the compiler
-	crystal build $(FLAGS) -o build src/build.cr
+	rm -rf ~/.cache/crystal/*
+	crystal build -D strict_multi_assign -D preview_overload_order --progress --stats -o build src/build.cr
 	mv build $(HOME)/bin/
 
-
 $(LLVM_EXT_OBJ): $(LLVM_EXT_SRC)
-	$(CXX) -c $(CXXFLAGS) -o $@ $< $(LLVM_CXXFLAGS)
+	$(CXX) -c $(LLVM_CXXFLAGS) -o llvm_ext.o $<
+	sudo mv llvm_ext.o $@
 
 .PHONY: man
 man: man/crystal.1.gz ## Build the manual
@@ -87,6 +83,7 @@ man/%.gz: man/%
 .PHONY: clean
 clean: ## Clean up built directories and files
 	rm -rf cache/*
+	rm -rf ~/.cache/crystal/*
 	find ./ -name "*~" -delete
 
 #.PHONY: test

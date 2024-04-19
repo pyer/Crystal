@@ -1,3 +1,6 @@
 *~
 cache
 hello
+lib
+llvm_ext.o
+

@@ -12,6 +12,12 @@ module Crystal
     Default     = LineNumbers
   end
 
+  enum FramePointers
+    Auto
+    Always
+    NonLeaf
+  end
+
   # Main interface to the compiler.
   #
   # A Compiler parses source code, type checks it and
@@ -38,9 +44,19 @@ module Crystal
     # Library paths
     property paths = [] of String
 
+    # Controls generation of frame pointers.
+    property frame_pointers = FramePointers::Auto
+
     # If `true`, the executable will be generated with debug code
     # that can be understood by `gdb` and `lldb`.
     property debug = Debug::Default
+
+    # If `true`, `.ll` files will be generated in the default cache
+    # directory for each generated LLVM module.
+    property? dump_ll = false
+
+    # Additional link flags to pass to the linker.
+    property link_flags : String?
 
     # Sets the mcpu. Check LLVM docs to learn about this.
     property mcpu : String?
@@ -111,14 +127,9 @@ module Crystal
     # Program that was created for the last compilation.
     property! program : Program
 
-    # Compiles the given *source*, with *output_filename* as the name
-    # of the generated executable.
-    #
-    # Raises `Crystal::CodeError` if there's an error in the
-    # source code.
-    #
-    # Raises `InvalidByteSequenceError` if the source code is not
-    # valid UTF-8.
+    # Compiles the given *source*, with *output_filename* as the name of the generated executable.
+    # Raises `Crystal::CodeError` if there's an error in the source code.
+    # Raises `InvalidByteSequenceError` if the source code is not valid UTF-8.
     def compile_and_link(source : Source | Array(Source), output_filename : String) : Result
       source = [source] unless source.is_a?(Array)
       if release?
@@ -159,8 +170,9 @@ module Crystal
 
     private def new_program(sources)
       @program = program = Program.new(target_machine)
+#      @program = program = Program.new()
       program.filename = sources.first.filename
-      program.cache = cache
+#      program.cache = cache
       program.flags.concat(@flags)
       program.flags << "release" if release?
       program.flags << "debug" unless debug.none?
@@ -333,7 +345,7 @@ module Crystal
           features += "+vfp2"
         end
       else
-        raise Error.new("Unsupported architecture for target triple: #{target_machine.to_s}")
+        raise Exception.new("Unsupported architecture for target triple: #{target_machine.to_s}")
       end
 
       opt_level = release? ? LLVM::CodeGenOptLevel::Aggressive : LLVM::CodeGenOptLevel::None

@@ -4,9 +4,9 @@ module Crystal
     getter pkg_config : String?
     getter ldflags : String?
     getter framework : String?
+    getter dll : String?
 
-    #def initialize(@lib = nil, @ldflags = nil, @static = false, @framework = nil)
-    def initialize(@lib = nil, @pkg_config = @lib, @ldflags = nil, @static = false, @framework = nil)
+    def initialize(@lib = nil, @pkg_config = @lib, @ldflags = nil, @static = false, @framework = nil, @dll = nil)
     end
 
     def static?
@@ -25,6 +25,7 @@ module Crystal
       lib_ldflags = nil
       lib_static = false
       lib_framework = nil
+      lib_dll = nil
       count = 0
 
       args.each do |arg|
@@ -71,12 +72,21 @@ module Crystal
         when "pkg_config"
           named_arg.raise "'pkg_config' link argument must be a String" unless value.is_a?(StringLiteral)
           #lib_pkg_config = value.value
+        when "dll"
+          named_arg.raise "'dll' link argument must be a String" unless value.is_a?(StringLiteral)
+          lib_dll = value.value
+          unless lib_dll.size >= 4 && lib_dll[-4..].compare(".dll", case_insensitive: true) == 0
+            named_arg.raise "'dll' link argument must use a '.dll' file extension"
+          end
+          if ::Path.separators(::Path::Kind::WINDOWS).any? { |separator| lib_dll.includes?(separator) }
+            named_arg.raise "'dll' link argument must not include directory separators"
+          end
         else
           named_arg.raise "unknown link argument: '#{named_arg.name}' (valid arguments are 'lib', 'ldflags', 'static' and 'framework')"
         end
       end
 
-      new(lib_name, nil, lib_ldflags, lib_static, lib_framework)
+      new(lib_name, nil, lib_ldflags, lib_static, lib_framework, lib_dll)
     end
   end
 

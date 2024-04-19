@@ -1,10 +1,11 @@
 require "./util"
-require "./error"
+#require "./error"
 require "colorize"
 
 module Crystal
   # Base class for all errors related to specific user code.
-  abstract class CodeError < Error
+  #abstract class CodeError < Error
+  abstract class CodeError < ::Exception
     property? color = false
     property? error_trace = false
     property? warning = false
