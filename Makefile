@@ -65,8 +65,7 @@ build: $(LLVM_EXT_OBJ) ## Build the compiler
 	mv build $(HOME)/bin/
 
 .PHONY: crystal
-crystal: $(LLVM_EXT_OBJ) ## Build the compiler
-	rm -rf ~/.cache/crystal/*
+crystal: clean $(LLVM_EXT_OBJ) ## Build the compiler
 	crystal build -D strict_multi_assign -D preview_overload_order --progress --stats -o build src/build.cr
 	mv build $(HOME)/bin/
 
@@ -82,7 +81,6 @@ man/%.gz: man/%
 
 .PHONY: clean
 clean: ## Clean up built directories and files
-	rm -rf cache/*
 	rm -rf ~/.cache/crystal/*
 	find ./ -name "*~" -delete
 

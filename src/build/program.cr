@@ -286,7 +286,7 @@ module Crystal
 
     # Defines a predefined constant in the Crystal module, such as BUILD_DATE and VERSION.
     private def define_crystal_constants
-#      define_crystal_string_constant "CACHE_DIR", Crystal::Config.cache
+      define_crystal_string_constant "CACHE_DIR", Build::CACHE
       define_crystal_string_constant "VERSION", Build::VERSION
       define_crystal_string_constant "LLVM_VERSION", Build::LLVM_VERSION
       define_crystal_string_constant "TARGET_TRIPLE", Build::TARGET

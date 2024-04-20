@@ -1,14 +1,13 @@
 # This is the main file that is compiled to generate the executable for the compiler.
 
 module Build
-  VERSION      = "2.0.2"
-  # LLVM_VERSION = {{ `llvm-config --version` }}
-  LLVM_VERSION = "17.0.6"
+  VERSION      = "2.0.0"
+  LLVM_VERSION = "17.0.6" # llvm-config --version
   TARGET       = "x86_64-linux-gnu"
-  # PATH         = "/usr/lib/build"
-  PATH_SRC       = "/usr/share/crystal/src"
-  PATH_LIB       = "/usr/share/crystal/src/lib_c/x86_64-linux-gnu"
+  PATH_SRC     = "/usr/share/crystal/src"
+  PATH_LIB     = "/usr/share/crystal/src/lib_c/x86_64-linux-gnu"
   BUILD_DATE   = {{ `date +'"%Y-%m-%d %H:%M:%S"'` }}
+  CACHE        = ENV["HOME"] + "/.cache/crystal"
 end
 
 require "json"

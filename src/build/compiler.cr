@@ -51,12 +51,8 @@ module Crystal
     # that can be understood by `gdb` and `lldb`.
     property debug = Debug::Default
 
-    # If `true`, `.ll` files will be generated in the default cache
-    # directory for each generated LLVM module.
-    property? dump_ll = false
-
     # Additional link flags to pass to the linker.
-    property link_flags : String?
+    property link_flags = " -rdynamic"
 
     # Sets the mcpu. Check LLVM docs to learn about this.
     property mcpu : String?
@@ -277,7 +273,6 @@ module Crystal
     end
 
     private def linker_command(program : Program, object_names, output_filename, output_dir, expand = false)
-        link_flags = " -rdynamic"
         {DEFAULT_LINKER, %(#{DEFAULT_LINKER} "${@}" -o #{Process.quote_posix(output_filename)} #{link_flags} #{program.lib_flags}), object_names}
     end
 
