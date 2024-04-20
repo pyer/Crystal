@@ -551,8 +551,12 @@ module Crystal
               str << char
             when ':', '@', ','
               str << char
-            when '(', ')', ' '
+            when ' '
               str << '_'
+            when '('
+              str << '{'
+            when ')'
+              str << '}'
             else
               str << char.ord
             end
