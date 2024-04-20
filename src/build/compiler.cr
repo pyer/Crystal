@@ -61,7 +61,7 @@ module Crystal
     property mattr : String?
 
     # cache directory
-    property cache = "cache"
+    property cache = Build::CACHE
 
     # If `false`, color won't be used in output messages.
     property? color = true
@@ -142,33 +142,11 @@ module Crystal
       Result.new program, node
     end
 
-    # Runs the semantic pass on the given source, without generating an
-    # executable nor analyzing methods. The returned `Program` in the result will
-    # contain all types and methods. This can be useful to generate
-    # API docs, analyze type relationships, etc.
-    #
-    # Raises `Crystal::CodeError` if there's an error in the
-    # source code.
-    #
-    # Raises `InvalidByteSequenceError` if the source code is not
-    # valid UTF-8.
-    def top_level_semantic(source : Source | Array(Source)) : Result
-      source = [source] unless source.is_a?(Array)
-      program = new_program(source)
-      node = parse program, source
-      node, processor = program.top_level_semantic(node)
-
-      @progress_tracker.clear
-      print_macro_run_stats(program)
-
-      Result.new program, node
-    end
-
     private def new_program(sources)
       @program = program = Program.new(target_machine)
 #      @program = program = Program.new()
       program.filename = sources.first.filename
-#      program.cache = cache
+      program.cache = cache
       program.flags.concat(@flags)
       program.flags << "release" if release?
       program.flags << "debug" unless debug.none?
@@ -218,19 +196,7 @@ module Crystal
     # given filenames will be stored. The directory will be
     # created if it doesn't exist.
     private def directory_for(filename : String)
-      filename = ::Path[filename]
-      name = String.build do |io|
-        filename.each_part do |part|
-          if io.empty?
-            if part == "#{filename.anchor}"
-              part = "#{filename.drive}"[..0]
-            end
-          else
-            io << '-'
-          end
-          io << part
-        end
-      end
+      name = ::Path[filename].expand.to_s.gsub('/', '-').lchop
       output_dir = File.join(cache, name)
       Dir.mkdir_p(output_dir)
       output_dir
