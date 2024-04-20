@@ -17,7 +17,6 @@ module Crystal
     property def_nest : Int32
     property fun_nest : Int32
     property type_nest : Int32
-    getter? wants_doc : Bool
     @block_arg_name : String?
 
     def self.parse(str, string_pool : StringPool? = nil, var_scopes = [Set(String).new]) : ASTNode
@@ -46,8 +45,6 @@ module Crystal
       @in_macro_expression = false
       @stop_on_yield = 0
       @inside_c_struct = false
-      @wants_doc = false
-      @doc_enabled = false
       @no_type_declaration = 0
       @consuming_heredocs = false
       @inside_interpolation = false
@@ -75,10 +72,6 @@ module Crystal
       # then this flag is set to `true` when parsing `foo`'s arguments.
       @stop_on_do = false
       @assigned_vars = [] of String
-    end
-
-    def wants_doc=(@wants_doc : Bool)
-      @doc_enabled = wants_doc
     end
 
     def parse
@@ -3525,7 +3518,6 @@ module Crystal
     ] of Token::Kind
 
     def parse_def_helper(is_abstract = false)
-      @doc_enabled = false
       @def_nest += 1
 
       # At this point we want to attach the "do" to calls inside the def,
@@ -3735,7 +3727,6 @@ module Crystal
       end
 
       @def_nest -= 1
-      @doc_enabled = @wants_doc
 
       node = Def.new name, params, body, receiver, block_param, return_type, @is_macro_def, @block_arity, is_abstract, splat_index, double_splat: double_splat, free_vars: free_vars
       node.name_location = name_location

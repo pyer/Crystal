@@ -87,7 +87,6 @@ abstract class Crystal::SemanticVisitor < Crystal::Visitor
   private def require_file(node : Require, filename : String)
     parser = @program.new_parser(File.read(filename))
     parser.filename = filename
-    parser.wants_doc = @program.wants_doc?
     begin
       parsed_nodes = parser.parse
       parsed_nodes = @program.normalize(parsed_nodes, inside_exp: inside_exp?)

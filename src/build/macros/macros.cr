@@ -42,7 +42,6 @@ class Crystal::Program
     parser.def_nest = 1 if current_def && !current_def.is_a?(External)
     parser.fun_nest = 1 if current_def && current_def.is_a?(External)
     parser.type_nest = 1 if inside_type
-    parser.wants_doc = @program.wants_doc?
     generated_node = yield parser
     normalize(generated_node, inside_exp: inside_exp, current_def: current_def)
   end

@@ -39,8 +39,6 @@ class Crystal::TopLevelVisitor < Crystal::SemanticVisitor
 
   @method_added_running = false
 
-  @last_doc : String?
-
   # special types recognized for `@[Primitive]`
   private enum PrimitiveType
     ReferenceStorageType
@@ -382,7 +380,6 @@ class Crystal::TopLevelVisitor < Crystal::SemanticVisitor
       node.add_annotation(annotation_type, ann)
     end
     node.doc ||= annotations_doc(annotations)
-    check_ditto node, node.location
 
     node.args.each &.accept self
     node.double_splat.try &.accept self
@@ -432,7 +429,6 @@ class Crystal::TopLevelVisitor < Crystal::SemanticVisitor
     end
 
     node.doc ||= annotations_doc(annotations)
-    check_ditto node, node.location
 
     node.args.each &.accept self
     node.double_splat.try &.accept self
@@ -799,7 +795,6 @@ class Crystal::TopLevelVisitor < Crystal::SemanticVisitor
       member.default_value = const_member.value
 
       const_member.doc = member.doc
-      check_ditto const_member, member.location
 
       if member_location = member.location
         const_member.add_location(member_location)
@@ -871,7 +866,6 @@ class Crystal::TopLevelVisitor < Crystal::SemanticVisitor
       const.add_annotation(annotation_type, ann) if annotation_type == @program.deprecated_annotation
     end
 
-    check_ditto node, node.location
     attach_doc const, node, annotations
 
     scope.types[name] = const
@@ -975,7 +969,6 @@ class Crystal::TopLevelVisitor < Crystal::SemanticVisitor
     end
 
     node.doc ||= annotations_doc(annotations)
-    check_ditto node, node.location
 
     # Copy call convention from lib, if any
     scope = current_type
@@ -1174,30 +1167,9 @@ class Crystal::TopLevelVisitor < Crystal::SemanticVisitor
   end
 
   def attach_doc(type, node, annotations)
-    if @program.wants_doc?
-      type.doc ||= node.doc
-      type.doc ||= annotations_doc(annotations) if annotations
-    end
-
     if node_location = node.location
       type.add_location(node_location)
     end
-  end
-
-  def check_ditto(node : Def | Assign | FunDef | Const | Macro, location : Location?) : Nil
-    return if !@program.wants_doc?
-
-    if stripped_doc = node.doc.try &.strip
-      if stripped_doc == ":ditto:"
-        node.doc = @last_doc
-        return
-      elsif appendix = stripped_doc.lchop?(":ditto:\n")
-        node.doc = "#{@last_doc}\n\n#{appendix.lchop('\n')}"
-        return
-      end
-    end
-
-    @last_doc = node.doc
   end
 
   def annotations_doc(annotations)

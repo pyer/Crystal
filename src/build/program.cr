@@ -61,9 +61,6 @@ module Crystal
     # Top-level variables found in a program (only in the main file).
     getter vars = MetaVars.new
 
-    # If `true`, doc comments are attached to types and methods.
-    property? wants_doc = false
-
     # cache directory
     property cache = "."
 

@@ -7,8 +7,8 @@ module Crystal
       to_s(io)
     end
 
-    def to_s(io : IO, macro_expansion_pragmas = nil, emit_doc = false) : Nil
-      visitor = ToSVisitor.new(io, macro_expansion_pragmas: macro_expansion_pragmas, emit_doc: emit_doc)
+    def to_s(io : IO, macro_expansion_pragmas = nil) : Nil
+      visitor = ToSVisitor.new(io, macro_expansion_pragmas: macro_expansion_pragmas)
       self.accept visitor
     end
   end
@@ -25,21 +25,12 @@ module Crystal
       BLOCK_ARG
     end
 
-    def initialize(@str = IO::Memory.new, @macro_expansion_pragmas = nil, @emit_doc = false)
+    def initialize(@str = IO::Memory.new, @macro_expansion_pragmas = nil)
       @indent = 0
       @inside_macro = 0
     end
 
     def visit_any(node)
-      if @emit_doc && (doc = node.doc) && !doc.empty?
-        doc.each_line(chomp: true) do |line|
-          @str << "# "
-          @str << line
-          newline
-          append_indent
-        end
-      end
-
       if (macro_expansion_pragmas = @macro_expansion_pragmas) && (loc = node.location) && (filename = loc.filename).is_a?(String)
         pragmas = macro_expansion_pragmas[@str.pos.to_i32] ||= [] of Lexer::LocPragma
         pragmas << Lexer::LocSetPragma.new(filename, loc.line_number, loc.column_number)

@@ -5,7 +5,6 @@ require "../warnings"
 
 module Crystal
   class Lexer
-    property? doc_enabled : Bool
     property? comments_enabled : Bool
     property? count_whitespace : Bool
     property? wants_raw : Bool
@@ -65,7 +64,6 @@ module Crystal
       @column_number = 1
       @filename = ""
       @wants_regex = true
-      @doc_enabled = false
       @comment_is_doc = true
       @comments_enabled = false
       @count_whitespace = false
@@ -118,9 +116,7 @@ module Crystal
           next_char_no_column_increment
           consume_loc_pragma
         else
-          if @doc_enabled && @comment_is_doc
-            consume_doc
-          elsif @comments_enabled
+          if @comments_enabled
             return consume_comment(start)
           else
             skip_comment

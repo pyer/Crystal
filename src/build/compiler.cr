@@ -66,6 +66,10 @@ module Crystal
     # If `false`, color won't be used in output messages.
     property? color = true
 
+    # Maximum number of LLVM modules that are compiled in parallel
+    #property n_threads : Int32 = {% if flag?(:preview_mt) || flag?(:win32) %} 1 {% else %} 8 {% end %}
+    property n_threads : Int32 = 8
+
     # Default prelude file to use. This ends up adding a
     # `require "prelude"` (or whatever name is set here) to
     # the source file to compile.
@@ -100,10 +104,6 @@ module Crystal
 
     # A `ProgressTracker` object which tracks compilation progress.
     property progress_tracker = ProgressTracker.new
-
-    # If `true`, doc comments are attached to types and methods
-    # and can later be used to generate API docs.
-    property? wants_doc = false
 
     # Warning settings and all detected warnings.
     property warnings = WarningCollection.new
@@ -152,7 +152,6 @@ module Crystal
       program.flags << "debug" unless debug.none?
       program.flags << "static" if static?
       program.paths.concat(@paths)
-      program.wants_doc = wants_doc?
       program.color = color?
       program.stdout = stdout
       program.show_error_trace = show_error_trace?
@@ -183,7 +182,6 @@ module Crystal
     private def parse(program, source : Source)
       parser = program.new_parser(source.code)
       parser.filename = source.filename
-      parser.wants_doc = wants_doc?
       parser.parse
     rescue ex : InvalidByteSequenceError
       stderr.print colorize("Error: ").red.bold
@@ -249,10 +247,11 @@ module Crystal
 
       @progress_tracker.stage("Codegen (object files)") do
         @progress_tracker.stage_progress_total = units.size
-        units.each do |unit|
-          unit.compile
-          @progress_tracker.stage_progress += 1
-        end
+#        units.each do |unit|
+#          unit.compile
+#          @progress_tracker.stage_progress += 1
+#        end
+        codegen_many_units(program, units, target_triple)
       end
 
       # We check again because maybe this directory was created in between (maybe with a macro run)
@@ -267,6 +266,107 @@ module Crystal
           run_linker *linker_command(program, object_names, output_filename, output_dir, expand: true)
         end
       end
+      {units}
+    end
+
+    private def codegen_many_units(program, units, target_triple)
+      # Don't start more processes than compilation units
+      n_threads = @n_threads.clamp(1..units.size)
+
+      # If threads is 1 we can avoid fork/spawn/channels altogether. This is
+      # particularly useful for CI because there forking eventually leads to
+      # "out of memory" errors.
+      if n_threads == 1
+        units.each do |unit|
+          unit.compile
+        end
+      else
+
+        workers = fork_workers(n_threads) do |input, output|
+          while i = input.gets(chomp: true).presence
+            unit = units[i.to_i]
+            unit.compile
+            result = {name: unit.name}
+            output.puts result.to_json
+          end
+        end
+
+        overqueue = 1
+        indexes = Atomic(Int32).new(0)
+        channel = Channel(String).new(n_threads)
+        completed = Channel(Nil).new(n_threads)
+
+        workers.each do |pid, input, output|
+          spawn do
+            overqueued = 0
+
+            overqueue.times do
+              if (index = indexes.add(1)) < units.size
+                input.puts index
+                overqueued += 1
+              end
+            end
+
+            while (index = indexes.add(1)) < units.size
+              input.puts index
+
+              response = output.gets(chomp: true).not_nil!
+              channel.send response
+            end
+
+            overqueued.times do
+              response = output.gets(chomp: true).not_nil!
+              channel.send response
+            end
+
+            input << '\n'
+            input.close
+            output.close
+
+            Process.new(pid).wait
+            completed.send(nil)
+          end
+        end
+
+        spawn do
+          n_threads.times { completed.receive }
+          channel.close
+        end
+
+        while response = channel.receive?
+          @progress_tracker.stage_progress += 1
+        end
+      end
+    end
+
+    private def fork_workers(n_threads)
+      workers = [] of {Int32, IO::FileDescriptor, IO::FileDescriptor}
+
+      n_threads.times do
+        iread, iwrite = IO.pipe
+        oread, owrite = IO.pipe
+
+        iwrite.flush_on_newline = true
+        owrite.flush_on_newline = true
+
+        pid = Crystal::System::Process.fork do
+          iwrite.close
+          oread.close
+
+          yield iread, owrite
+
+          iread.close
+          owrite.close
+          exit 0
+        end
+
+        iread.close
+        owrite.close
+
+        workers << {pid, iwrite, oread}
+      end
+
+      workers
     end
 
     private def print_macro_run_stats(program)
@@ -279,11 +379,7 @@ module Crystal
         print " - "
         print filename
         print ": "
-        if compiled_macro_run.reused
-          print "reused previous compilation (#{compiled_macro_run.elapsed})"
-        else
-          print compiled_macro_run.elapsed
-        end
+        print compiled_macro_run.elapsed
         puts
       end
     end
@@ -437,14 +533,12 @@ module Crystal
     class CompilationUnit
       getter compiler
       getter name
-      getter original_name
       getter llvm_mod
       getter object_extension = ".o"
 
       def initialize(@compiler : Compiler, program : Program, @name : String,
                      @llvm_mod : LLVM::Module, @output_dir : String)
         @name = "_main" if @name == ""
-        @original_name = @name
         @name = String.build do |str|
           @name.each_char do |char|
             case char
@@ -453,7 +547,12 @@ module Crystal
             when 'A'..'Z'
               # Because OSX has case insensitive filenames, try to avoid
               # clash of 'a' and 'A' by using 'A-' for 'A'.
-              str << char << '-'
+              #str << char << '-'
+              str << char
+            when ':', '@', ','
+              str << char
+            when '(', ')', ' '
+              str << '_'
             else
               str << char.ord
             end
