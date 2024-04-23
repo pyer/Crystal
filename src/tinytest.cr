@@ -4,7 +4,6 @@ require "./tinytest/hooks"
 require "./tinytest/exceptions"
 require "./tinytest/result"
 
-#     for name in @type.methods.map(&.name).select(&.starts_with?("test_"))
 class Test
     include Tinytest::Assertions
     include Tinytest::Hooks
@@ -22,10 +21,12 @@ class Test
 
     def capture_exception(result : Tinytest::Result, &) : Nil
       yield
-    rescue ex : Tinytest::Assertion | Tinytest::Skip
-      result.failures << ex
+    rescue ex : Tinytest::Assertion
+      result.assert(ex.message.to_s)
+    rescue ex : Tinytest::Skip
+      result.skip(ex.message.to_s)
     rescue ex : Exception
-      result.failures << Tinytest::UnexpectedError.new(ex)
+      result.error(ex.message.to_s)
     end
 
     def run

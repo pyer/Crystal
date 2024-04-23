@@ -1,48 +1,38 @@
+require "colorize"
+
 module Tinytest
   class Result
-    getter assertions : Int64
-    getter failures : Array(Assertion | Skip | UnexpectedError)
-    getter name : String
+    getter message : String
+    getter status  : String
+    getter color   : Symbol
     property! time : Time::Span
 
-    def initialize(@name : String)
-      @assertions = 0
-      @failures = [] of Assertion | Skip | UnexpectedError
+    def initialize(name : String)
+      @message = "  - " + name + " : "
+      @status = "OK"
+      @color = :green
     end
 
-    def success
-      @message = "OK"
+    def assert(st : String)
+      @status = st
+      @color  = :red
     end
 
-    def passed? : Bool
-      failures.empty?
+    def skip(st : String)
+      @status = st
+      @color  = :yellow
     end
 
-    def skipped? : Bool
-      failures.any?(Skip)
-    end
-
-    def result_code : Char
-      if passed?
-        '.'
-      elsif skipped?
-        'S'
-      elsif failures.any?(Assertion)
-        'F'
-      else
-        'E'
-      end
-    end
-
-    def failure : Assertion | Skip | UnexpectedError
-      failures.first
+    def error(st : String)
+      @status = st
+      @color  = :red
     end
 
     def report
-        message = "OK"
-        message = failure.message unless passed?
-        puts "  - " + @name + " : " + message
+      print @message
+      puts @status.colorize(@color)
     end
+
   end
 end
 

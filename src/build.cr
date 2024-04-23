@@ -5,7 +5,7 @@ module Build
   LLVM_VERSION = "17.0.6" # llvm-config --version
   TARGET       = "x86_64-linux-gnu"
   PATH_SRC     = "/usr/share/crystal/src"
-  PATH_LIB     = "/usr/share/crystal/src/lib_c/x86_64-linux-gnu"
+  PATH_LIB     = PATH_SRC + "/lib_c/" + TARGET
   BUILD_DATE   = {{ `date +'"%Y-%m-%d %H:%M:%S"'` }}
   CACHE        = ENV["HOME"] + "/.cache/crystal"
 end
