@@ -19,7 +19,7 @@ module Tinytest
     end
 
     def skip(st : String)
-      @status = st
+      @status = st.empty? ? "skipped" : st
       @color  = :yellow
     end
 
