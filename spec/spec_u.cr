@@ -1,7 +1,0 @@
-require "./lib/uint_spec"
-require "./lib/uri/params_spec"
-require "./lib/uri/punycode_spec"
-require "./lib/uri_spec"
-require "./lib/uuid_spec"
-require "./lib/uuid/json_spec"
-require "./lib/uuid/yaml_spec"

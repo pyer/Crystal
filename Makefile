@@ -6,17 +6,14 @@
 ##   $ make progress=1
 ## Build the compiler in release mode
 ##   $ make release=1
+## Build the compiler with crystal
+##   $ make crystal
 ## Clean up built files
 ##   $ make clean
-## Run tests
+## Test the compiler
 ##   $ make test
-## Run stdlib tests
-##   $ make std_spec
-## Run compiler tests
-##   $ make compiler_spec
 
-# C compiler
-CC = "gcc"
+SHELL := /bin/bash
 
 # llvm-config command path to use
 LLVM_VERSION  := $(shell llvm-config --version)
@@ -35,24 +32,6 @@ order ?=random  ## Enable order for spec execution (values: "default" | "random"
 .PHONY: all
 all: build
 #	install -m 644 man/crystal.1.gz "/usr/share/man/man1/crystal.1.gz"
-
-.PHONY: spec
-spec:
-	@for file in spec/spec_*.cr ; do \
-    echo "" ; \
-    echo "Compiling $${file}" ; \
-    build -q -o cache/ts $${file} ; \
-    echo "Running:" ; \
-    ./cache/ts ; \
-	  rm -f cache/ts ; \
-  done
-
-.PHONY: test
-test:
-	@echo "Build"
-	@build -q -o cache/tu test/test.cr
-	@./cache/tu
-	@rm -f cache/tu
 
 .PHONY: hello
 hello:
@@ -84,8 +63,22 @@ clean: ## Clean up built directories and files
 	rm -rf ~/.cache/crystal/*
 	find ./ -name "*~" -delete
 
-#.PHONY: test
-#test: spec ## Run tests
+.PHONY: tinytest
+tinytest:
+	sudo rm -rf /usr/share/crystal/src/tinytest*
+	sudo cp -r src/tinytest /usr/share/crystal/src/
+	sudo cp src/tinytest.cr /usr/share/crystal/src/
+
+.PHONY: test
+test:
+	@for file in $$(ls -1 test/test_*.cr); do \
+    echo "" ; \
+    echo "Compiling $${file}" ; \
+    build -q -o test_unit $${file} ; \
+    echo "Running:" ; \
+	  ./test_unit ; \
+    rm -f test_unit ; \
+  done
 
 .PHONY: help
 help: ## Show this help
