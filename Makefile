@@ -63,12 +63,6 @@ clean: ## Clean up built directories and files
 	rm -rf ~/.cache/crystal/*
 	find ./ -name "*~" -delete
 
-.PHONY: tinytest
-tinytest:
-	sudo rm -rf /usr/share/crystal/src/tinytest*
-	sudo cp -r src/tinytest /usr/share/crystal/src/
-	sudo cp src/tinytest.cr /usr/share/crystal/src/
-
 .PHONY: test
 test:
 	@for file in $$(ls -1 test/test_*.cr); do \
