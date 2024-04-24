@@ -35,7 +35,7 @@ quiet = false;
     compiler.flags = Build::TARGET.split("-")
     compiler.flags << "unix"
     compiler.flags << "bits64"
-    compiler.paths = [Build::PATH_SRC, Build::PATH_LIB]
+    compiler.paths = ["lib", Build::PATH_SRC, Build::PATH_LIB]
     compiler.single_module = false
     compiler.static = false
 
