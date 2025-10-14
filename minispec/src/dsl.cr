@@ -1,4 +1,3 @@
-
 module MiniSpec::DSL
 
   class Context
@@ -50,13 +49,8 @@ module MiniSpec::DSL
     Context.teardown
   end
 
-  macro pending(name, file = __FILE__, line = __LINE__)
-    MiniSpec::PendingTest.new({{name}}, {{file}}, {{line}})
-  end
-
   macro pending(name, file = __FILE__, line = __LINE__, &block)
     MiniSpec::PendingTest.new({{name}}, {{file}}, {{line}})
   end
 
 end
-
