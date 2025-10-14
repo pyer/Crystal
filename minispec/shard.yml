@@ -1,0 +1,7 @@
+name: minispec
+version: 0.1.0
+crystal: ">=1.17"
+
+authors:
+  - pyer <pierre.bazonnard@gmail.com>
+
