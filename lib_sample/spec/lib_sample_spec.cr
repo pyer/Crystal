@@ -1,9 +1,7 @@
 require "./spec_helper"
 
-describe LibSample do
-  # TODO: Write tests
+# TODO: Write tests
 
-  it "works" do
-    false.should eq(true)
-  end
+test "version" do
+  assert_equal LibSample::VERSION, "0.1.0"
 end
