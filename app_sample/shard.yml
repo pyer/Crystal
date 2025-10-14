@@ -1,0 +1,13 @@
+name: app_sample
+version: 0.1.0
+
+authors:
+  - pyer <pierre.bazonnard@gmail.com>
+
+targets:
+  app_sample:
+    main: src/app_sample.cr
+
+crystal: '>= 1.17.0'
+
+license: MIT
