@@ -14,15 +14,10 @@ module MiniSpec::Assertions
 
   # Assert that expression is not nil or false.
   macro assert(expression, msg = nil, file = __FILE__, line = __LINE__)
-    %evaluation = {{expression}}
-
-    unless %evaluation
+    unless {{expression}}
       %msg = {{msg}} || "Failed assertion"
-
       raise MiniSpec::AssertionFailed.new(%msg, {{file}}, {{line}})
     end
-
-    MiniSpec.increment(:assertions)
   end
 
   # Assert that actual and expected values are equal.
@@ -40,7 +35,7 @@ module MiniSpec::Assertions
     begin
       {{yield}}
     rescue %exception : {{expected}}
-      MiniSpec.increment(:assertions)
+      # Passed
     rescue %exception
       %ex = %exception.is_a?({{expected}})
       assert(%ex, "got #{%ex.inspect} instead of #{{{expected}}.inspect}", {{file}}, {{line}})

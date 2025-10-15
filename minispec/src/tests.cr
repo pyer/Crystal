@@ -2,13 +2,11 @@ module MiniSpec
 
   @@tests = [] of Test
   @@counter = {
-    :assertions => 0,
     :passed     => 0,
     :pending    => 0,
     :failures   => 0,
   }
   @@tag = {
-    :assertions => "",
     :passed     => ".",
     :pending    => "P",
     :failures   => "F",
@@ -31,11 +29,11 @@ module MiniSpec
     @@counter[:failures]
   end
 
-  def self.report
-    report = @@counter.map { |k, v| "#{v} #{k}" }
-    puts "\n", report.join(", ")
-
-    @@tests.each &.description
+  def self.print_report
+    counters = @@counter.map { |k, v| "#{v} #{k}" }
+    summary = counters.join(", ")
+    puts "\nTests: #{summary}"
+    @@tests.each &.report
   end
 
   def self.store(test : Test)
@@ -43,12 +41,19 @@ module MiniSpec
   end
 
   abstract class Test
-    def initialize(@name : String, @file : String, @line : Int32)
+    def initialize(@name : String, @file : String, @line : Int32, @exception : Exception? = nil)
       MiniSpec.increment(@id)
-      MiniSpec.store(self)
     end
 
-    def description
+    def report
+      puts description(@exception)
+    end
+
+    def description(ex : Nil)
+      raise "subclass responsibility"
+    end
+
+    def description(ex : Exception)
       raise "subclass responsibility"
     end
   end
@@ -56,26 +61,26 @@ module MiniSpec
   class PassedTest < Test
     @id = :passed
 
-    def description
+    def description(ex : Nil)
       # Do nothing
-      #puts "Passed : #{@name}"
+      # "Passed : #{@name}"
     end
   end
 
   class PendingTest < Test
     @id = :pending
 
-    def description
-      puts "Pending : #{@name}"
+    def description(ex : Nil)
+      "Pending : #{@name}"
     end
   end
 
   class FailedTest < Test
     @id = :failures
 
-    def description
+    def description(ex : Exception)
       bn = Path[@file].basename
-      puts "Failed : #{@name} [#{bn}:#{@line}]"
+      "Failed : #{@name} [#{bn}:#{@line}]\n\t#{ex}"
     end
   end
 

@@ -7,7 +7,7 @@ include MiniSpec::Assertions
 include MiniSpec::DSL
 
 at_exit do
-  MiniSpec.report
+  MiniSpec.print_report
   # returns the number of failed tests
   exit MiniSpec.failures
 end

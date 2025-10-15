@@ -42,8 +42,9 @@ module MiniSpec::DSL
     begin
       {{ yield }}
       MiniSpec::PassedTest.new {{name}}, {{file}}, {{line}}
-    rescue
-      MiniSpec::FailedTest.new {{name}}, {{file}}, {{line}}
+    rescue ex
+      result = MiniSpec::FailedTest.new {{name}}, {{file}}, {{line}}, ex
+      MiniSpec.store(result)
     end
 
     Context.teardown
