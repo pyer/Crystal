@@ -19,5 +19,5 @@ Launch the server
 
 and browse it
 
-[http://localhost:8080][http://localhost:8080)
+[pico server](http://localhost:8080)
 
