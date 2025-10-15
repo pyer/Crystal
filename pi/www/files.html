@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Pico</title>
+  <link rel="stylesheet" href="/www/css/default/style.min.css" />
+  <link rel="stylesheet" href="/www/css/style.css" />
+</head>
+<body>
+  <h1>Files:</h1>
+  <div class="tree">
+    <div id="ajax">
+    </div>
+  </div>
+
+  <script src="/www/js/jquery.min.js"></script>
+  <script src="/www/js/jstree.min.js"></script>
+  <script>
+  // ajax demo
+  $('#ajax').jstree({
+    'core' : {
+      "themes" : {
+        "variant" : "large"
+      },
+      'data' : {
+        "url" : "/tree",
+        "dataType" : "json" // needed only if you do not supply JSON headers
+      }
+    },
+    "checkbox" : {
+      "keep_selected_style" : true
+    },
+    "plugins" : [ "sort", "checkbox" ]
+  });
+  </script>
+</body>
+</html>

@@ -1,0 +1,31 @@
+/*******************************************************************************
+ * Default theme style
+ *******************************************************************************/
+
+html {
+  margin:   0;
+  padding:  0;
+  font-size:1em;
+}
+
+body {
+  max-width:800px;
+  min-width:300px;
+  margin:   0 auto;
+  padding:  20px 10px;
+}
+/*
+  font-size:1.4em; }
+*/
+
+h1 {
+  font-size:1.8em;
+}
+
+.tree {
+  overflow: auto;
+  border:   1px solid silver;
+  min-height:100px;
+  max-height:400px;
+}
+
