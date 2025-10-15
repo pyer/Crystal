@@ -13,34 +13,29 @@ end
 module MiniSpec::Assertions
 
   # Assert that expression is not nil or false.
-  macro assert(expression, msg = nil, file = __FILE__, line = __LINE__)
-    unless {{expression}}
-      %msg = {{msg}} || "Failed assertion"
-      raise MiniSpec::AssertionFailed.new(%msg, {{file}}, {{line}})
-    end
+  macro assert(expression, file = __FILE__, line = __LINE__)
+    raise MiniSpec::AssertionFailed.new("Failed assertion", {{file}}, {{line}}) unless {{expression}}
   end
 
   # Assert that actual and expected values are equal.
-  macro assert_equal(actual, expected, msg = nil, file = __FILE__, line = __LINE__)
+  macro assert_equal(actual, expected, file = __FILE__, line = __LINE__)
     %actual = {{actual}}
     %expected = {{expected}}
-
-    %msg = {{msg}} || "got #{ %actual.inspect } instead of #{ %expected.inspect }"
-
-    assert(%actual == %expected, %msg, {{file}}, {{line}})
+    %msg = "got #{ %actual.inspect } instead of #{ %expected.inspect }"
+    raise MiniSpec::AssertionFailed.new(%msg, {{file}}, {{line}}) unless %actual == %expected
   end
 
   # Assert that the block raises an expected exception.
-  macro assert_raise(expected = Exception, msg = nil, file = __FILE__, line = __LINE__)
+  macro assert_raise(expected = Exception, file = __FILE__, line = __LINE__)
     begin
       {{yield}}
     rescue %exception : {{expected}}
       # Passed
     rescue %exception
-      %ex = %exception.is_a?({{expected}})
-      assert(%ex, "got #{%ex.inspect} instead of #{{{expected}}.inspect}", {{file}}, {{line}})
+      %msg = "got #{%exception.inspect} instead of #{{{expected}}.inspect}"
+      raise MiniSpec::AssertionFailed.new(%msg, {{file}}, {{line}})
     else
-      %msg = {{msg}} || "Expected #{{{expected}}.class.name} to be raised"
+      %msg = "Expected #{{{expected}}.class.name} to be raised"
       raise MiniSpec::AssertionFailed.new(%msg, {{file}}, {{line}})
     end
   end
