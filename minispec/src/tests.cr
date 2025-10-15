@@ -4,12 +4,12 @@ module MiniSpec
   @@counter = {
     :passed     => 0,
     :pending    => 0,
-    :failures   => 0,
+    :failed   => 0,
   }
   @@tag = {
     :passed     => ".",
     :pending    => "P",
-    :failures   => "F",
+    :failed   => "F",
   }
 
   def self.increment(key : Symbol)
@@ -26,7 +26,7 @@ module MiniSpec
   end
 
   def self.failures
-    @@counter[:failures]
+    @@counter[:failed]
   end
 
   def self.print_report
@@ -76,7 +76,7 @@ module MiniSpec
   end
 
   class FailedTest < Test
-    @id = :failures
+    @id = :failed
 
     def description(ex : Exception)
       bn = Path[@file].basename
