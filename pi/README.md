@@ -11,11 +11,13 @@ crystal build --progress src/pi.cr
 
 ## Usage
 
+Launch the server
+
 ```
 ./pi
 ```
 
-Listening on port 8080
+and browse it
 
-[http://localhost:8080]
+[http://localhost:8080][http://localhost:8080)
 
